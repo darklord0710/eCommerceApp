@@ -1,5 +1,4 @@
 # eCommerceApp
-# eCommerceApp
 Create virtual environment
 
 	python -m venv venv
