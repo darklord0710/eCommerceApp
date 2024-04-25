@@ -1,8 +1,11 @@
-import cloudinary.uploader, random, uuid
-# import bcrypt
+from datetime import datetime
+import requests
+import cloudinary.uploader, random
 from django.shortcuts import render, redirect
 from django.contrib.auth import logout, authenticate, login
-from django.views.decorators.csrf import csrf_exempt
+from oauth2_provider.models import AccessToken, RefreshToken
+from oauth2_provider.settings import oauth2_settings
+from django.utils import timezone
 
 from .models import Category, User, Product, Shop, ProductInfo, ProductImageDetail, ProductImagesColors, ProductVideos, \
     ProductSell, Voucher, VoucherCondition, VoucherType, ConfirmationShop, \
@@ -26,6 +29,21 @@ from twilio.rest import Client
 #     elif len(apps) == 0:
 #         raise SocialApp.DoesNotExist()
 #     return apps[0]
+def get_access_token_login(user):
+    access_token = AccessToken.objects.filter(user_id=user.id).first()
+    if access_token and access_token.expires > timezone.now():
+        return access_token
+    else:
+        refresh_token = RefreshToken.objects.filter(user_id=user.id).first()
+        if not access_token or not refresh_token:
+            return None
+        if refresh_token:
+            access_token = AccessToken.objects.filter(id=refresh_token.access_token_id).first()
+            access_token.expires = access_token.expires + timezone.timedelta(hours=1)
+            access_token.save()
+            return access_token
+
+
 @api_view(['POST', 'GET'])
 def user_login(request):
     if request.method == 'GET':
@@ -40,8 +58,10 @@ def user_login(request):
             if users_with_phone.exists():
                 user = authenticate(request, username=users_with_phone.first().username, password=password)
                 if user is not None:
-                    login(request, user)
-                    return Response({'success': 'Login successfully'}, status=status.HTTP_200_OK)
+                    access_token = get_access_token_login(user)
+                    return Response({'success': 'Login successfully', 'access_token': access_token.token},
+                                    status=status.HTTP_200_OK)
+
             return Response({'error': 'Invalid phone or password.'}, status=status.HTTP_401_UNAUTHORIZED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -154,18 +174,36 @@ def verify_otp(request):
                 if cache.get('is_login'):  # Xóa cache_is_login
                     cache.delete('is_login')
                     user = User.objects.get(phone=phone, is_active=1)
-                    login(request, user, backend='django.contrib.auth.backends.ModelBackend')
                     del request.session['phone']
-                    return Response({'success': 'Login with SMS successfully'}, status=status.HTTP_200_OK)
+                    access_token = get_access_token_login(user)
+                    return Response({'success': 'Login successfully', 'access_token': access_token.token},
+                                    status=status.HTTP_200_OK)
                 print(cache.get('is_signup'))
                 if cache.get('is_signup'):  # Xóa cache_is_signup
                     cache.delete('is_signup')
                     return Response({'success': 'Continue to setup profile to finish'}, status=status.HTTP_200_OK)
-                    # return redirect('basic_setup_profile')
             else:
                 return Response({'message': 'Mã OTP không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+def get_access_token(username, password):
+    data = {
+        'grant_type': 'password',
+        'username': username,
+        'password': password,
+        'client_id': 'huSwBrzoYojItzHqIKGClwAMrbTp9Tb9ktTmOofY',
+        'client_secret': 'VX7Ow4UvEOYY8mOxq9CJ6tput695aR4UcILjxKyZsHVOuCnaH1JhDer19KFiDYh3bH8hkefKy3r5TqfOU4rt4JDgTpG36C9kvlQciXfmYpS2ooivSkyyxSS1aJCGAnBQ',
+    }
+
+    response = requests.post('http://127.0.0.1:8000/o/token/', data=data)
+
+    if response.status_code == 200:
+        access_token = response.json().get('access_token')
+        return access_token
+    else:
+        return None
 
 
 @api_view(['POST', 'GET'])
@@ -192,43 +230,44 @@ def basic_setup_profile(request):  # Đều dùng cho signup cũ và mới
                     user.is_active = 1
                     user.save()
 
-                    login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-
+                    token = get_access_token(username, cache.get('password'))
                     cache.delete('password')  # Xóa cache_password_signup
                     if 'phone' in request.session:
                         del request.session['phone']  # Xóa session_phone_signup
                     # Redirect to another page after profile setup
-                    return Response({'success': 'User created successfully'}, status=status.HTTP_200_OK)
+                    return Response({'success': 'User created successfully', 'access_token': token},
+                                    status=status.HTTP_200_OK)
                 else:
                     return Response({'error': 'File upload failed'}, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-def profile_view(request):
-    picture_url = None
-    if request.user.is_authenticated:
-        user = request.user
-        if not user.avatar:
-            try:
-                social_account = SocialAccount.objects.get(user=user)
-                extra_data = social_account.extra_data
-                picture_url = extra_data.get('picture')
-                if picture_url:
-                    # Tải hình ảnh từ URL và lưu vào CloudinaryField
-                    upload_result = cloudinary.uploader.upload(picture_url)
-                    user.avatar = upload_result['url']
-                    user.save()
-                    print(f"URL mới được lưu trong Cloudinary: {user.avatar}")
-            except SocialAccount.DoesNotExist:
-                print("Không có thông tin SocialAccount tương ứng.")
-        else:
-            print(f"Hình ảnh hiện tại từ Cloudinary: {user.avatar.url}")
-            picture_url = user.avatar.url
-            return render(request, 'noti.html', {'picture_url': picture_url})
-    else:
-        print("User not authenticated")
-    return render(request, 'noti.html', {'picture_url': picture_url})
+# For login with Google
+# def profile_view(request):
+#     picture_url = None
+#     if request.user.is_authenticated:
+#         user = request.user
+#         if not user.avatar:
+#             try:
+#                 social_account = SocialAccount.objects.get(user=user)
+#                 extra_data = social_account.extra_data
+#                 picture_url = extra_data.get('picture')
+#                 if picture_url:
+#                     # Tải hình ảnh từ URL và lưu vào CloudinaryField
+#                     upload_result = cloudinary.uploader.upload(picture_url)
+#                     user.avatar = upload_result['url']
+#                     user.save()
+#                     print(f"URL mới được lưu trong Cloudinary: {user.avatar}")
+#             except SocialAccount.DoesNotExist:
+#                 print("Không có thông tin SocialAccount tương ứng.")
+#         else:
+#             print(f"Hình ảnh hiện tại từ Cloudinary: {user.avatar.url}")
+#             picture_url = user.avatar.url
+#             return render(request, 'noti.html', {'picture_url': picture_url})
+#     else:
+#         print("User not authenticated")
+#     return render(request, 'noti.html', {'picture_url': picture_url})
 
 
 #
