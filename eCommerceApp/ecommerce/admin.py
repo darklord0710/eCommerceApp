@@ -200,7 +200,16 @@ class ProductAdmin(BasePermissionChecker, admin.ModelAdmin):
     inlines = [ProductInfoInline, ProductImageDetailInline, ProductImagesColorInline, ProductVideosInline,
                ProductSellInline]
 
+    def get_readonly_fields(self, request, obj=None):
+        readonly_fields = list(super().get_readonly_fields(request, obj))
+        # Kiểm tra xem người dùng có quyền admin không
+        if request.user.is_superuser:
+            readonly_fields.remove('shop')
+        return readonly_fields
+
     def save_model(self, request, obj, form, change):
+        if request.user.is_superuser:
+            obj.shop = Shop.objects.get(id=obj.shop_id)
         # Lấy shop từ người dùng hiện tại
         obj.shop = Shop.objects.get(user_id=request.user.id)
         super().save_model(request, obj, form, change)

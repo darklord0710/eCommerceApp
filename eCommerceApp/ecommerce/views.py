@@ -39,7 +39,7 @@ def get_access_token_login(user):
             return None
         if refresh_token:
             access_token = AccessToken.objects.filter(id=refresh_token.access_token_id).first()
-            access_token.expires = access_token.expires + timezone.timedelta(hours=1)
+            access_token.expires = timezone.now() + timezone.timedelta(hours=1)
             access_token.save()
             return access_token
 
