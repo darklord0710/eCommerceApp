@@ -4,18 +4,16 @@ import cloudinary.uploader, random
 from django.shortcuts import render, redirect
 from django.contrib.auth import logout, authenticate, login
 from oauth2_provider.models import AccessToken, RefreshToken
-from oauth2_provider.settings import oauth2_settings
 from django.utils import timezone
 
 from .models import Category, User, Product, Shop, ProductInfo, ProductImageDetail, ProductImagesColors, ProductVideos, \
     ProductSell, Voucher, VoucherCondition, VoucherType, ConfirmationShop, \
     StatusConfirmationShop
 from rest_framework import viewsets, generics, status, parsers, permissions
-from . import serializers, perms
+from . import serializers, perms, pagination
 from rest_framework.decorators import action, api_view, authentication_classes, permission_classes
 from rest_framework.response import Response
 from django.core.cache import cache
-from twilio.rest import Client
 
 
 # in adpater.py
@@ -368,10 +366,43 @@ class ShopViewSet(viewsets.ViewSet, generics.CreateAPIView):
 
 
 class ProductViewSet(viewsets.ViewSet, generics.ListAPIView):
-    pass
+    pagination_class = pagination.ProductPaginator
     # GET products/
+    queryset = Product.objects.filter(active=True)
+    serializer_class = serializers.ProductSerializer
+
     # GET products/?page=?&product_name=&shop_name=&price_from=&price_to=
-    # -> getByName/Price/Shop , arrangeByName/Price, paginate 20 products/page
+    def get_queryset(self):
+        queries = self.queryset
+
+        np = self.request.query_params.get("np")  # name product
+        pmn = self.request.query_params.get("pmn")  # price min
+        pmx = self.request.query_params.get("pmx")  # price max
+        ns = self.request.query_params.get("ns")  # lọc theo tên cửa hàng
+        opi = self.request.query_params.get("opi")  # order price increase
+        opd = self.request.query_params.get("opd")  # order price decrease
+        oni = self.request.query_params.get("oni")  # order name increase
+        ond = self.request.query_params.get("ond")  # order name decrease
+
+        if np:
+            queries = queries.filter(name__icontains=np)
+        if ns:
+            queries = queries.filter(shop__name__icontains=ns)
+        if pmn:
+            queries = queries.filter(price__gte=pmn)
+        if pmx:
+            queries = queries.filter(price__lte=pmx)
+        if opi is not None:
+            queries = queries.order_by('price')
+        if opd is not None:
+            queries = queries.order_by('-price')
+        if oni is not None:
+            queries = queries.order_by('name')
+        if ond is not None:
+            queries = queries.order_by('-name')
+
+        return queries
+    # -> getByName/Price/Shop , arrangeByName/Price, paginate 5 products/page
     # POST/PATCH/DELETE products/{product_id}/ratings  <Bear Token is owner>
     # GET products/{product_id}/ratings
     # POST/PATCH/DELETE products/{product_id}/comments  <Bear Token is owner>

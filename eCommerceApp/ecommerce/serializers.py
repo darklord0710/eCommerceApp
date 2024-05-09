@@ -1,7 +1,13 @@
 from .models import Category, User, Product, Shop, ProductInfo, ProductImageDetail, ProductImagesColors, ProductVideos, \
-    ProductSell, Voucher, VoucherCondition, VoucherType, ConfirmationShop, StatusConfirmationShop
+    ProductSell, Voucher, VoucherCondition, VoucherType, ConfirmationShop, StatusConfirmationShop, BaseModel
+
 from rest_framework.serializers import ModelSerializer
 from rest_framework import serializers
+
+
+class BaseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BaseModel
 
 
 class UserSerializer(ModelSerializer):
@@ -30,11 +36,11 @@ class UserSerializer(ModelSerializer):
 
 
 class ShopSerializer(ModelSerializer):
-    user = UserSerializer()
+    # user = UserSerializer()
 
     class Meta:
         model = Shop
-        fields = "__all__"
+        fields = ['name', 'following', 'followed', 'rating']
 
 
 class StatusConfirmationShop(ModelSerializer):
@@ -62,6 +68,34 @@ class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = '__all__'
+
+
+class ProductSellSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductSell
+        fields = ['sold_quantity', 'percent_sale', 'rating']
+
+
+class ProductSerializer(BaseSerializer):
+    sold_quantity = serializers.IntegerField(source='productsell.sold_quantity', read_only=True)
+    percent_sale = serializers.IntegerField(source='productsell.percent_sale', read_only=True)
+    rating = serializers.FloatField(source='productsell.rating', read_only=True)
+
+    class Meta:
+        model = Product
+        fields = ['name', 'price', 'shop_id', 'category_id', 'sold_quantity', 'percent_sale', 'rating']
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        try:
+            product_sell = ProductSell.objects.get(product=instance)
+            product_sell_data = ProductSellSerializer(product_sell).data
+            representation.update(product_sell_data)
+        except ProductSell.DoesNotExist:
+            representation['sold_quantity'] = 0
+            representation['percent_sale'] = 0
+            representation['rating'] = 0.0
+        return representation
 
 
 class UserLoginSerializer(serializers.Serializer):

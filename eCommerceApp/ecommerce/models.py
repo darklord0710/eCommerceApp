@@ -5,6 +5,7 @@ from django.contrib.auth.models import AbstractUser
 from ckeditor.fields import RichTextField
 from cloudinary.models import CloudinaryField
 from django.core.exceptions import ValidationError
+import datetime
 
 
 class User(AbstractUser):
@@ -20,8 +21,8 @@ class UserAddresses(models.Model):
 
 
 class BaseModel(models.Model):
-    created_date = models.DateTimeField(auto_now_add=True)
-    updated_date = models.DateTimeField(auto_now=True)
+    created_date = models.DateField(auto_now_add=True)
+    updated_date = models.DateField(auto_now=True)
     active = models.BooleanField(default=True)
     img = CloudinaryField(null=True)
 

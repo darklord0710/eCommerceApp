@@ -161,6 +161,7 @@ class ShopAdmin(BasePermissionChecker, admin.ModelAdmin):
 
 class ProductInfoInline(admin.StackedInline):  # Hoặc InlineModelAdmin tùy thuộc vào giao diện bạn muốn
     model = ProductInfo
+    min_num = 1
     extra = 1  # Số lượng form tạo mới ban đầu
     max_num = 1
 
@@ -185,6 +186,7 @@ class ProductVideosInline(admin.StackedInline):
 
 class ProductSellInline(admin.StackedInline):
     model = ProductSell
+    min_num = 1
     extra = 1
     max_num = 1
     readonly_fields = ['sold_quantity', 'rating']
@@ -526,7 +528,8 @@ class ConfirmationShopAdmin(BasePermissionChecker, admin.ModelAdmin):
     def confirm_and_assign_permission(self, request, queryset):
         # Danh sách các tên nhóm cần gán quyền
         group_names = ['CATEGORY_MANAGER', 'PRODUCT_MANAGER', 'PRODUCTIMAGEDETAIL_MANAGER',
-                       'PRODUCTIMAGESCOLORS_MANAGER', 'PRODUCTINFO_MANAGER', 'PRODUCTVIDEOS_MANAGER', 'SHOP_MANAGER',
+                       'PRODUCTIMAGESCOLORS_MANAGER', 'PRODUCTINFO_MANAGER', 'PRODUCTVIDEOS_MANAGER',
+                       'SHOP_MANAGER',
                        'VENDOR_MANAGER', ]
 
         # Danh sách các tên quyền cần gán
@@ -538,7 +541,8 @@ class ConfirmationShopAdmin(BasePermissionChecker, admin.ModelAdmin):
                                  'change_shop', 'view_productimagedetail', 'add_productimagedetail',
                                  'change_productimagedetail', 'delete_productimagedetail', 'view_productimagescolors',
                                  'add_productimagescolors', 'change_productimagescolors',
-                                 'delete_productimagescolors', ]
+                                 'delete_productimagescolors', 'view_productsell', 'add_productsell',
+                                 'change_productsell', ]
 
         # Lặp qua từng người dùng trong queryset
         for obj in queryset:
