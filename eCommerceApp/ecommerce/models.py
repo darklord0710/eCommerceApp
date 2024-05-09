@@ -43,7 +43,7 @@ class Shop(BaseModel):
     name = models.CharField(max_length=100)
     following = models.IntegerField(default=0)
     followed = models.IntegerField(default=0)
-    rating = models.FloatField(null=True, default=0)
+    rated = models.FloatField(null=True, default=0)
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
 
     def __str__(self):
@@ -94,7 +94,7 @@ class ProductInfo(models.Model):
 
 class ProductSell(models.Model):
     sold_quantity = models.IntegerField(null=False, default=0)
-    percent_sale = models.IntegerField(default=0)
+    percent_sale = models.IntegerField(default=0, null=False)
     rating = models.FloatField(null=False, default=0)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, default=None)
 
@@ -155,13 +155,23 @@ class Orders_Vouchers(models.Model):
     voucher = models.ForeignKey(Voucher, on_delete=models.PROTECT)
 
 
-class CommentAndRating(models.Model):
-    content = RichTextField()
-    ratedShop = models.FloatField()
-    ratedProduct = models.FloatField()
+class Interaction(models.Model):
+    created_date = models.DateField(auto_now_add=True)
+    updated_date = models.DateField(auto_now=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    shop = models.ForeignKey(Shop, on_delete=models.CASCADE)
+
+    class Meta:
+        abstract = True
+
+
+class Rating(Interaction):
+    ratedShop = models.FloatField()
+    ratedProduct = models.FloatField()
+
+
+class Comment(Interaction):
+    content = RichTextField()
 
 
 class StatusConfirmationShop(models.Model):

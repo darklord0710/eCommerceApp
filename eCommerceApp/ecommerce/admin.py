@@ -125,10 +125,10 @@ class CustomUserAdmin(BasePermissionChecker, admin.ModelAdmin):
 
 
 class ShopAdmin(BasePermissionChecker, admin.ModelAdmin):
-    list_display = ['id', 'name', 'following', 'followed', 'rating', 'user_id', 'my_image', 'active']
+    list_display = ['id', 'name', 'following', 'followed', 'rated', 'user_id', 'my_image', 'active']
     search_fields = ['id', 'name']
-    list_filter = ['active', 'rating']
-    readonly_fields = ['following', 'followed', 'rating', 'user_id', 'user']
+    list_filter = ['active', 'rated']
+    readonly_fields = ['following', 'followed', 'rated', 'user_id', 'user']
 
     def my_image(self, shop):
         if shop.img:
@@ -259,7 +259,7 @@ class ProductInfoAdmin(BasePermissionChecker, admin.ModelAdmin):
     list_filter = ['origin', 'material', 'manufacture']
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        if db_field.name == "product":
+        if db_field.name == "product" and not request.user.is_superuser:
             shop = Shop.objects.filter(user_id=request.user.id).first()
             kwargs["queryset"] = Product.objects.filter(shop_id=shop.id)
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
@@ -302,7 +302,7 @@ class ProductImageDetailAdmin(BasePermissionChecker, admin.ModelAdmin):
     list_filter = ['product_id']
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        if db_field.name == "product":
+        if db_field.name == "product" and not request.user.is_superuser:
             shop = Shop.objects.filter(user_id=request.user.id).first()
             kwargs["queryset"] = Product.objects.filter(shop_id=shop.id)
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
@@ -346,7 +346,7 @@ class ProductImagesColorsAdmin(BasePermissionChecker, admin.ModelAdmin):
     list_filter = ['product_id']
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        if db_field.name == "product":
+        if db_field.name == "product" and not request.user.is_superuser:
             shop = Shop.objects.filter(user_id=request.user.id).first()
             kwargs["queryset"] = Product.objects.filter(shop_id=shop.id)
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
@@ -390,7 +390,7 @@ class ProductVideosAdmin(BasePermissionChecker, admin.ModelAdmin):
     list_filter = ['product_id']
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        if db_field.name == "product":
+        if db_field.name == "product" and not request.user.is_superuser:
             shop = Shop.objects.filter(user_id=request.user.id).first()
             kwargs["queryset"] = Product.objects.filter(shop_id=shop.id)
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
@@ -426,6 +426,45 @@ class ProductVideosAdmin(BasePermissionChecker, admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return self.has_permission(request, 'PRODUCTVIDEOS_MANAGER', 'delete')
+
+
+class ProductSellAdmin(BasePermissionChecker, admin.ModelAdmin):
+    list_display = ['sold_quantity', 'percent_sale', 'rating', ]
+    search_fields = ['sold_quantity', 'percent_sale', 'rating', ]
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "product" and not request.user.is_superuser:
+            shop = Shop.objects.filter(user_id=request.user.id).first()
+            kwargs["queryset"] = Product.objects.filter(shop_id=shop.id)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+
+        products = None
+        shop = Shop.objects.filter(user_id=request.user.id).first()  # .first() để chuyển từ dạng query sang object
+        if shop:
+            products = Product.objects.filter(shop_id=shop.id).all()
+
+        if request.user.groups.filter(name="VENDOR_MANAGER").exists():
+            if products:
+                queryset = queryset.filter(product__shop=shop)
+                return queryset
+            return ProductSell.objects.none()
+
+        return queryset
+
+    def has_view_permission(self, request, obj=None):
+        return self.has_permission(request, 'PRODUCTSELL_MANAGER', 'view')
+
+    def has_add_permission(self, request):
+        return self.has_permission(request, 'PRODUCTSELL_MANAGER', 'add')
+
+    def has_change_permission(self, request, obj=None):
+        return self.has_permission(request, 'PRODUCTSELL_MANAGER', 'change')
+
+    def has_delete_permission(self, request, obj=None):
+        return self.has_permission(request, 'PRODUCTSELL_MANAGER', 'delete')
 
 
 class VoucherConditionInline(admin.StackedInline):
@@ -529,20 +568,21 @@ class ConfirmationShopAdmin(BasePermissionChecker, admin.ModelAdmin):
         # Danh sách các tên nhóm cần gán quyền
         group_names = ['CATEGORY_MANAGER', 'PRODUCT_MANAGER', 'PRODUCTIMAGEDETAIL_MANAGER',
                        'PRODUCTIMAGESCOLORS_MANAGER', 'PRODUCTINFO_MANAGER', 'PRODUCTVIDEOS_MANAGER',
+                       'PRODUCTSELL_MANAGER'
                        'SHOP_MANAGER',
                        'VENDOR_MANAGER', ]
 
         # Danh sách các tên quyền cần gán
         permissions_to_assign = ['view_category', 'view_product', 'add_product', 'change_product', 'delete_product',
-                                 'view_shop', 'view_productinfo', 'add_productinfo', 'change_productinfo',
+                                 'view_shop',
+                                 'change_shop', 'view_productinfo', 'add_productinfo', 'change_productinfo',
                                  'delete_productinfo', 'view_productvideos', 'add_productvideos',
                                  'change_productvideos',
-                                 'delete_productvideos',
-                                 'change_shop', 'view_productimagedetail', 'add_productimagedetail',
+                                 'delete_productvideos', 'view_productimagedetail', 'add_productimagedetail',
                                  'change_productimagedetail', 'delete_productimagedetail', 'view_productimagescolors',
                                  'add_productimagescolors', 'change_productimagescolors',
                                  'delete_productimagescolors', 'view_productsell', 'add_productsell',
-                                 'change_productsell', ]
+                                 'change_productsell', 'delete_productsell']
 
         # Lặp qua từng người dùng trong queryset
         for obj in queryset:
@@ -639,6 +679,7 @@ admin.site.register(ProductInfo, ProductInfoAdmin)
 admin.site.register(ProductImageDetail, ProductImageDetailAdmin)
 admin.site.register(ProductImagesColors, ProductImagesColorsAdmin)
 admin.site.register(ProductVideos, ProductVideosAdmin)
+admin.site.register(ProductSell, ProductSellAdmin)
 admin.site.register(VoucherType, VoucherTypeAdmin)
 admin.site.register(Voucher, VoucherAdmin)
 admin.site.register(VoucherCondition, VoucherConditionAdmin)

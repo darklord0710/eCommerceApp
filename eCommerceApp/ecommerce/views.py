@@ -8,12 +8,14 @@ from django.utils import timezone
 
 from .models import Category, User, Product, Shop, ProductInfo, ProductImageDetail, ProductImagesColors, ProductVideos, \
     ProductSell, Voucher, VoucherCondition, VoucherType, ConfirmationShop, \
-    StatusConfirmationShop
+    StatusConfirmationShop, Rating
 from rest_framework import viewsets, generics, status, parsers, permissions
 from . import serializers, perms, pagination
 from rest_framework.decorators import action, api_view, authentication_classes, permission_classes
 from rest_framework.response import Response
 from django.core.cache import cache
+from django.db.models import Q
+from django.db.models import Sum
 
 
 # in adpater.py
@@ -365,29 +367,35 @@ class ShopViewSet(viewsets.ViewSet, generics.CreateAPIView):
     # GET shops/{shop_id}/comments
 
 
-class ProductViewSet(viewsets.ViewSet, generics.ListAPIView):
+class ProductViewSet(viewsets.ViewSet, generics.CreateAPIView):
     pagination_class = pagination.ProductPaginator
     # GET products/
     queryset = Product.objects.filter(active=True)
     serializer_class = serializers.ProductSerializer
 
     # GET products/?page=?&product_name=&shop_name=&price_from=&price_to=
+    # -> getByName/Price/Shop , arrangeByName/Price, paginate 5 products/page
+
+    def get_permissions(self):
+        if self.action in ['post_rating']:
+            return [permissions.IsAuthenticated()]
+
+        return [permissions.AllowAny(), ]
+
     def get_queryset(self):
         queries = self.queryset
 
-        np = self.request.query_params.get("np")  # name product
+        n = self.request.query_params.get("n")  # name product
         pmn = self.request.query_params.get("pmn")  # price min
         pmx = self.request.query_params.get("pmx")  # price max
-        ns = self.request.query_params.get("ns")  # lọc theo tên cửa hàng
         opi = self.request.query_params.get("opi")  # order price increase
         opd = self.request.query_params.get("opd")  # order price decrease
         oni = self.request.query_params.get("oni")  # order name increase
         ond = self.request.query_params.get("ond")  # order name decrease
 
-        if np:
-            queries = queries.filter(name__icontains=np)
-        if ns:
-            queries = queries.filter(shop__name__icontains=ns)
+        if n:
+            queries = queries.filter(Q(name__icontains=n) | Q(shop__name__icontains=n))
+            queries = queries.filter()
         if pmn:
             queries = queries.filter(price__gte=pmn)
         if pmx:
@@ -402,9 +410,30 @@ class ProductViewSet(viewsets.ViewSet, generics.ListAPIView):
             queries = queries.order_by('-name')
 
         return queries
-    # -> getByName/Price/Shop , arrangeByName/Price, paginate 5 products/page
-    # POST/PATCH/DELETE products/{product_id}/ratings  <Bear Token is owner>
-    # GET products/{product_id}/ratings
+
+    # POST/PATCH/DELETE products/{product_id}/rating/  <Bear Token is owner>
+    @action(methods=['post'], url_path="rating", detail=True)
+    def post_rating(self, request, pk):
+        ratedShop = request.data.get('ratedShop')
+        ratedProduct = request.data.get('ratedProduct')
+
+        product = self.queryset.filter(id=pk).first()
+        productSell = ProductSell.objects.filter(product_id=product.id).first()
+        shop = Shop.objects.get(id=product.shop_id)
+
+        r = self.get_object().rating_set.create(ratedShop=ratedShop, ratedProduct=ratedProduct, user=request.user,
+                                                product=product)
+        rated_products_len = Rating.objects.filter(product_id=r.product_id)
+        if rated_products_len == 0:
+            productSell.rating = ratedProduct
+        else:
+            total = rated_products_len.aggregate(total_sum=Sum('ratedProduct'))['total_sum']
+            productSell.rating = total / len(rated_products_len)
+
+            productSell.save()
+        return Response(status=status.HTTP_200_OK)
+
+        # GET products/{product_id}/ratings
     # POST/PATCH/DELETE products/{product_id}/comments  <Bear Token is owner>
     # GET products/{product_id}/comments
 

@@ -1,5 +1,5 @@
 from .models import Category, User, Product, Shop, ProductInfo, ProductImageDetail, ProductImagesColors, ProductVideos, \
-    ProductSell, Voucher, VoucherCondition, VoucherType, ConfirmationShop, StatusConfirmationShop, BaseModel
+    ProductSell, Voucher, VoucherCondition, VoucherType, ConfirmationShop, StatusConfirmationShop, BaseModel, Rating
 
 from rest_framework.serializers import ModelSerializer
 from rest_framework import serializers
@@ -83,7 +83,7 @@ class ProductSerializer(BaseSerializer):
 
     class Meta:
         model = Product
-        fields = ['name', 'price', 'shop_id', 'category_id', 'sold_quantity', 'percent_sale', 'rating']
+        fields = ['img', 'name', 'price', 'shop_id', 'category_id', 'sold_quantity', 'percent_sale', 'rating']
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
@@ -91,6 +91,8 @@ class ProductSerializer(BaseSerializer):
             product_sell = ProductSell.objects.get(product=instance)
             product_sell_data = ProductSellSerializer(product_sell).data
             representation.update(product_sell_data)
+            representation['img'] = instance.img.url
+
         except ProductSell.DoesNotExist:
             representation['sold_quantity'] = 0
             representation['percent_sale'] = 0
@@ -142,3 +144,9 @@ class UserSignupSerializer(serializers.Serializer):
         if not avatar:
             raise serializers.ValidationError("Avatar image is required.")
         return data
+
+
+class RatingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Rating
+        fields = ['created_date', 'ratedShop', 'ratedProduct', 'user_id', 'product_id']
