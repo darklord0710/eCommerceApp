@@ -4,7 +4,7 @@ from ckeditor_uploader.widgets import CKEditorUploadingWidget
 from django.utils.html import mark_safe
 from .models import Category, User, Product, Shop, ProductInfo, ProductImageDetail, ProductImagesColors, ProductVideos, \
     ProductSell, Voucher, VoucherCondition, VoucherType, ConfirmationShop, StatusConfirmationShop
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group, Permission
 from django.db.models import QuerySet
 
 APP_NAME = "ecommerce"
@@ -256,6 +256,12 @@ class ProductInfoAdmin(BasePermissionChecker, admin.ModelAdmin):
     search_fields = ['id', 'manufacture']
     list_filter = ['origin', 'material', 'manufacture']
 
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "product":
+            shop = Shop.objects.filter(user_id=request.user.id).first()
+            kwargs["queryset"] = Product.objects.filter(shop_id=shop.id)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
 
@@ -292,6 +298,12 @@ class ProductImageDetailAdmin(BasePermissionChecker, admin.ModelAdmin):
     list_display = ['id', 'product_id', 'my_image']
     search_fields = ['id', 'product_id']
     list_filter = ['product_id']
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "product":
+            shop = Shop.objects.filter(user_id=request.user.id).first()
+            kwargs["queryset"] = Product.objects.filter(shop_id=shop.id)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
@@ -331,6 +343,12 @@ class ProductImagesColorsAdmin(BasePermissionChecker, admin.ModelAdmin):
     search_fields = ['id', 'name_color']
     list_filter = ['product_id']
 
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "product":
+            shop = Shop.objects.filter(user_id=request.user.id).first()
+            kwargs["queryset"] = Product.objects.filter(shop_id=shop.id)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
 
@@ -368,6 +386,12 @@ class ProductVideosAdmin(BasePermissionChecker, admin.ModelAdmin):
     list_display = ['id', 'product_id', 'my_video']
     search_fields = ['id']
     list_filter = ['product_id']
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "product":
+            shop = Shop.objects.filter(user_id=request.user.id).first()
+            kwargs["queryset"] = Product.objects.filter(shop_id=shop.id)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
@@ -496,6 +520,61 @@ class ConfirmationShopAdmin(BasePermissionChecker, admin.ModelAdmin):
     fieldsets = (
         ("Results", {'fields': ('status', 'note',)}),
     )
+
+    actions = ['confirm_and_assign_permission']
+
+    def confirm_and_assign_permission(self, request, queryset):
+        # Danh sách các tên nhóm cần gán quyền
+        group_names = ['CATEGORY_MANAGER', 'PRODUCT_MANAGER', 'PRODUCTIMAGEDETAIL_MANAGER',
+                       'PRODUCTIMAGESCOLORS_MANAGER', 'PRODUCTINFO_MANAGER', 'PRODUCTVIDEOS_MANAGER', 'SHOP_MANAGER',
+                       'VENDOR_MANAGER', ]
+
+        # Danh sách các tên quyền cần gán
+        permissions_to_assign = ['view_category', 'view_product', 'add_product', 'change_product', 'delete_product',
+                                 'view_shop', 'view_productinfo', 'add_productinfo', 'change_productinfo',
+                                 'delete_productinfo', 'view_productvideos', 'add_productvideos',
+                                 'change_productvideos',
+                                 'delete_productvideos',
+                                 'change_shop', 'view_productimagedetail', 'add_productimagedetail',
+                                 'change_productimagedetail', 'delete_productimagedetail', 'view_productimagescolors',
+                                 'add_productimagescolors', 'change_productimagescolors',
+                                 'delete_productimagescolors', ]
+
+        # Lặp qua từng người dùng trong queryset
+        for obj in queryset:
+
+            if obj.status_id == 1:
+                return
+
+            # Lặp qua từng nhóm và thêm người dùng vào từng nhóm
+            user = User.objects.get(id=obj.user_id)
+
+            user.is_vendor = True
+            user.is_staff = True
+            user.save()
+
+            shop = Shop()
+            shop.img = 'https://res.cloudinary.com/diwxda8bi/image/upload/v1712904005/default-avatar-icon-of-social-media-user-vector_nr0hob.jpg'
+            shop.active = True
+            shop.name = user.username
+            shop.user_id = user.id
+            shop.save()
+
+            for group_name in group_names:
+                # Lấy nhóm
+                group = Group.objects.get(name=group_name)
+                # Thêm người dùng vào nhóm
+                group.user_set.add(user)
+
+            # Gán quyền cá nhân cho người dùng từ danh sách tên quyền
+            for permission_name in permissions_to_assign:
+                permission = Permission.objects.get(codename=permission_name)
+                user.user_permissions.add(permission)
+
+        # Cập nhật trường status của các đối tượng được chọn thành Status có id là 1
+        queryset.update(status_id=1)
+
+    confirm_and_assign_permission.short_description = "Phê duyệt thành công"
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
