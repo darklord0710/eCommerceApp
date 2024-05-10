@@ -7,7 +7,7 @@ from oauth2_provider.models import AccessToken, RefreshToken
 from django.utils import timezone
 from .models import Category, User, Product, Shop, ProductInfo, ProductImageDetail, ProductImagesColors, ProductVideos, \
     ProductSell, Voucher, VoucherCondition, VoucherType, ConfirmationShop, \
-    StatusConfirmationShop, Rating, Comment, Rating_Comment
+    StatusConfirmationShop, Rating, Comment, Rating_Comment, Like
 from rest_framework import viewsets, generics, status, parsers, permissions
 from . import serializers, perms, pagination
 from rest_framework.decorators import action, api_view, authentication_classes, permission_classes
@@ -497,6 +497,22 @@ class CommentViewSet(viewsets.ViewSet, generics.DestroyAPIView, generics.UpdateA
     queryset = Comment.objects.all()
     serializer_class = serializers.CommentSerializer
     permission_classes = [perms.CommentOwner]
+
+    def get_permissions(self):
+        if self.action in ['like_comment']:
+            return [permissions.IsAuthenticated(), ]
+
+        return super().get_permissions()
+
+    # POST /comments/{comment_id}/like/  <Bear Token is owner> <permission_classes>
+    @action(methods=['post'], url_path="like", detail=True)
+    def like_comment(self, request, pk):
+        like, created = Like.objects.get_or_create(user=request.user, comment=self.get_object())
+        if not created:
+            like.active = not like.active
+            like.save()
+
+        return Response(status=status.HTTP_200_OK)
 
 
 # =============================== (^3^) =============================== #

@@ -193,3 +193,12 @@ class ConfirmationShop(models.Model):
     citizen_identification_image = CloudinaryField()
     status = models.ForeignKey(StatusConfirmationShop, on_delete=models.PROTECT)
     note = RichTextField(default=None, null=True)
+
+
+class Like(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE)
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ('user', 'comment')

@@ -79,12 +79,11 @@ class ProductSellSerializer(serializers.ModelSerializer):
 
 class ProductSerializer(BaseSerializer):
     sold_quantity = serializers.IntegerField(source='productsell.sold_quantity', read_only=True)
-    percent_sale = serializers.IntegerField(source='productsell.percent_sale', read_only=True)
     rating = serializers.FloatField(source='productsell.rating', read_only=True)
 
     class Meta:
         model = Product
-        fields = ['id', 'img', 'name', 'price', 'shop_id', 'category_id', 'sold_quantity', 'percent_sale', 'rating']
+        fields = ['id', 'img', 'name', 'price', 'sold_quantity', 'rating']
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
@@ -96,7 +95,6 @@ class ProductSerializer(BaseSerializer):
 
         except ProductSell.DoesNotExist:
             representation['sold_quantity'] = 0
-            representation['percent_sale'] = 0
             representation['rating'] = 0.0
         return representation
 
