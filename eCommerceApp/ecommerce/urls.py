@@ -10,6 +10,7 @@ r = routers.DefaultRouter()
 r.register('users', views.UserViewSet)
 r.register('categories', views.CategoryViewset, basename='categories')
 r.register('products', views.ProductViewSet, basename='products')
+r.register('comments', views.CommentViewSet, basename='comments')
 
 # r.register('shops', views.ShopViewSet, basename='shops')
 # r.register('login', views.LoginWithPasswordViewSet, basename='login-with-password')

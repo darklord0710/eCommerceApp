@@ -304,6 +304,8 @@ class UserViewSet(viewsets.ViewSet, generics.CreateAPIView):
 
     @action(methods=['get', 'post', 'patch'], url_path='confirmationshop', detail=True)  # /users/{id}/confirmationshop/
     def get_post_patch_confirmationshop(self, request, pk):
+        if request.user.id != int(pk):
+            return Response(status=status.HTTP_403_FORBIDDEN)
         if request.method.__eq__('PATCH'):  # Patch vẫn cập nhật đc 2 dòng ảnh và status
             citizen_identification_image_data = request.data.get('citizen_identification_image')
             # confirmationShops = self.get_object().confirmationshop_set.get(user=request.user.id)
@@ -338,6 +340,8 @@ class UserViewSet(viewsets.ViewSet, generics.CreateAPIView):
     # Lấy tất cả rating của user hiện tại
     @action(methods=['get'], url_path="ratings", detail=True)  # /users/{user_id}/ratings/
     def get_user_ratings(self, request, pk):
+        if request.user.id != int(pk):
+            return Response(status=status.HTTP_403_FORBIDDEN)
         ratings = self.get_object().rating_set.select_related('user').order_by("-id")  # user nằm trong rating
         return Response(serializers.RatingSerializer(ratings, many=True).data, status=status.HTTP_200_OK)
 
@@ -353,7 +357,6 @@ class UserViewSet(viewsets.ViewSet, generics.CreateAPIView):
 class ShopViewSet(viewsets.ViewSet, generics.CreateAPIView):
     queryset = Shop.objects.filter(active=True)
     serializer_class = serializers.ShopSerializer
-    permission_classes = [perms.ShopOwner]
     parser_classes = [parsers.MultiPartParser, ]  # to receive file
 
     # POST/PATCH/DELETE shops/{shop_id}/ratings  <Bear Token is owner>
@@ -487,6 +490,13 @@ class ProductViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
             active=True).order_by("-id")
         return Response(serializers.Rating_Comment_Serializer(rating_comment, many=True).data,
                         status=status.HTTP_200_OK)
+
+
+# PATCH/DELETE comments/{comment_id}  <Bear Token is owner> <permission_classes>
+class CommentViewSet(viewsets.ViewSet, generics.DestroyAPIView, generics.UpdateAPIView):
+    queryset = Comment.objects.all()
+    serializer_class = serializers.CommentSerializer
+    permission_classes = [perms.CommentOwner]
 
 
 # =============================== (^3^) =============================== #

@@ -41,7 +41,7 @@ class ShopSerializer(ModelSerializer):
 
     class Meta:
         model = Shop
-        fields = ['name', 'following', 'followed', 'rating']
+        fields = ['id', 'name', 'following', 'followed', 'rating']
 
 
 class StatusConfirmationShop(ModelSerializer):
@@ -74,7 +74,7 @@ class CategorySerializer(serializers.ModelSerializer):
 class ProductSellSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductSell
-        fields = ['sold_quantity', 'percent_sale', 'rating']
+        fields = ['id', 'sold_quantity', 'percent_sale', 'rating']
 
 
 class ProductSerializer(BaseSerializer):
@@ -84,7 +84,7 @@ class ProductSerializer(BaseSerializer):
 
     class Meta:
         model = Product
-        fields = ['img', 'name', 'price', 'shop_id', 'category_id', 'sold_quantity', 'percent_sale', 'rating']
+        fields = ['id', 'img', 'name', 'price', 'shop_id', 'category_id', 'sold_quantity', 'percent_sale', 'rating']
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
@@ -147,46 +147,52 @@ class UserSignupSerializer(serializers.Serializer):
         return data
 
 
+##################### Rating and Comment BASE ####################
+
+
 class RatingSerializer(serializers.ModelSerializer):
     # user = UserSerializer()
-    # product = ProductSerializer()
+    product = ProductSerializer()
 
     class Meta:
         model = Rating
-        fields = ['created_date', 'ratedShop', 'ratedProduct', 'user_id', 'product_id']
+        fields = ['id', 'created_date', 'ratedShop', 'ratedProduct', 'user_id', 'product']
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    # user = UserSerializer()
-    # product = ProductSerializer()
+    user = UserSerializer()
+    product = ProductSerializer()
 
     class Meta:
         model = Comment
-        fields = ['created_date', 'content', 'user_id', 'product_id']
+        fields = ['id', 'created_date', 'content', 'user', 'product']
+
+
+##################### Rating and Comment Dto ####################
+
+class User_RatingCommentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'avatar', ]
+
+
+class Rating_RatingCommentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Rating
+        fields = ['id', 'created_date', 'ratedProduct', ]
+
+
+class Comment_RatingCommentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Comment
+        fields = ['id', 'created_date', 'content', ]
 
 
 class Rating_Comment_Serializer(serializers.ModelSerializer):
-    user = serializers.SerializerMethodField()
-    product = serializers.SerializerMethodField()
-    comment = serializers.SerializerMethodField()
-    rating = serializers.SerializerMethodField()
+    user = User_RatingCommentSerializer()
+    comment = Comment_RatingCommentSerializer()
+    rating = Rating_RatingCommentSerializer()
 
     class Meta:
         model = Rating_Comment
-        fields = ['comment', 'user', 'product', 'rating']
-
-    def get_user(self, obj):
-        if isinstance(obj, Interaction):
-            return UserSerializer(obj.user).data
-
-    def get_product(self, obj):
-        if isinstance(obj, Interaction):
-            return ProductSerializer(obj.product).data
-
-    def get_comment(self, obj):
-        if isinstance(obj, Interaction):
-            return CommentSerializer(obj.comment).data
-
-    def get_rating(self, obj):
-        if isinstance(obj, Interaction):
-            return RatingSerializer(obj.rating).data
+        fields = ['id', 'comment', 'user', 'rating', ]
