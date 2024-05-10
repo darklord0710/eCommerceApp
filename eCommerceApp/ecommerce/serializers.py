@@ -1,5 +1,6 @@
 from .models import Category, User, Product, Shop, ProductInfo, ProductImageDetail, ProductImagesColors, ProductVideos, \
-    ProductSell, Voucher, VoucherCondition, VoucherType, ConfirmationShop, StatusConfirmationShop, BaseModel, Rating
+    ProductSell, Voucher, VoucherCondition, VoucherType, ConfirmationShop, StatusConfirmationShop, BaseModel, Rating, \
+    Comment
 
 from rest_framework.serializers import ModelSerializer
 from rest_framework import serializers
@@ -147,6 +148,18 @@ class UserSignupSerializer(serializers.Serializer):
 
 
 class RatingSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+    product = ProductSerializer()
+
     class Meta:
         model = Rating
-        fields = ['created_date', 'ratedShop', 'ratedProduct', 'user_id', 'product_id']
+        fields = ['created_date', 'ratedShop', 'ratedProduct', 'user', 'product']
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+    product = ProductSerializer()
+
+    class Meta:
+        model = Comment
+        fields = ['created_date', 'content', 'user', 'product']

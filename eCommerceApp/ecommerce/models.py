@@ -172,6 +172,7 @@ class Rating(Interaction):
 
 class Comment(Interaction):
     content = RichTextField()
+    active = models.BooleanField(default=True)
 
 
 class StatusConfirmationShop(models.Model):
