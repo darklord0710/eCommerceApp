@@ -1,6 +1,6 @@
 from .models import Category, User, Product, Shop, ProductInfo, ProductImageDetail, ProductImagesColors, ProductVideos, \
     ProductSell, Voucher, VoucherCondition, VoucherType, ConfirmationShop, StatusConfirmationShop, BaseModel, Rating, \
-    Comment
+    Comment, Rating_Comment, Interaction
 
 from rest_framework.serializers import ModelSerializer
 from rest_framework import serializers
@@ -148,18 +148,45 @@ class UserSignupSerializer(serializers.Serializer):
 
 
 class RatingSerializer(serializers.ModelSerializer):
-    user = UserSerializer()
-    product = ProductSerializer()
+    # user = UserSerializer()
+    # product = ProductSerializer()
 
     class Meta:
         model = Rating
-        fields = ['created_date', 'ratedShop', 'ratedProduct', 'user', 'product']
+        fields = ['created_date', 'ratedShop', 'ratedProduct', 'user_id', 'product_id']
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    user = UserSerializer()
-    product = ProductSerializer()
+    # user = UserSerializer()
+    # product = ProductSerializer()
 
     class Meta:
         model = Comment
-        fields = ['created_date', 'content', 'user', 'product']
+        fields = ['created_date', 'content', 'user_id', 'product_id']
+
+
+class Rating_Comment_Serializer(serializers.ModelSerializer):
+    user = serializers.SerializerMethodField()
+    product = serializers.SerializerMethodField()
+    comment = serializers.SerializerMethodField()
+    rating = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Rating_Comment
+        fields = ['comment', 'user', 'product', 'rating']
+
+    def get_user(self, obj):
+        if isinstance(obj, Interaction):
+            return UserSerializer(obj.user).data
+
+    def get_product(self, obj):
+        if isinstance(obj, Interaction):
+            return ProductSerializer(obj.product).data
+
+    def get_comment(self, obj):
+        if isinstance(obj, Interaction):
+            return CommentSerializer(obj.comment).data
+
+    def get_rating(self, obj):
+        if isinstance(obj, Interaction):
+            return RatingSerializer(obj.rating).data

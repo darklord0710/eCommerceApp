@@ -156,8 +156,8 @@ class Orders_Vouchers(models.Model):
 
 
 class Interaction(models.Model):
-    created_date = models.DateField(auto_now_add=True)
-    updated_date = models.DateField(auto_now=True)
+    created_date = models.DateField(auto_now_add=True, )
+    updated_date = models.DateField(auto_now=True, )
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
 
@@ -172,6 +172,12 @@ class Rating(Interaction):
 
 class Comment(Interaction):
     content = RichTextField()
+    active = models.BooleanField(default=True)
+
+
+class Rating_Comment(Interaction):
+    rating = models.ForeignKey(Rating, on_delete=models.CASCADE)
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE)
     active = models.BooleanField(default=True)
 
 

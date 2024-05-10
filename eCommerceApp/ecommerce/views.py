@@ -7,7 +7,7 @@ from oauth2_provider.models import AccessToken, RefreshToken
 from django.utils import timezone
 from .models import Category, User, Product, Shop, ProductInfo, ProductImageDetail, ProductImagesColors, ProductVideos, \
     ProductSell, Voucher, VoucherCondition, VoucherType, ConfirmationShop, \
-    StatusConfirmationShop, Rating
+    StatusConfirmationShop, Rating, Comment, Rating_Comment
 from rest_framework import viewsets, generics, status, parsers, permissions
 from . import serializers, perms, pagination
 from rest_framework.decorators import action, api_view, authentication_classes, permission_classes
@@ -371,7 +371,7 @@ class ProductViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
     # -> getByName/Price/Shop , arrangeByName/Price, paginate 5 products/page
 
     def get_permissions(self):
-        if self.action in ['create_update_rating', 'create_update_delete_comment']:
+        if self.action in ['create_update_rating', 'update_delete_comment']:
             return [permissions.IsAuthenticated()]
 
         return [permissions.AllowAny(), ]
@@ -412,13 +412,14 @@ class ProductViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
     def create_update_rating(self, request, pk):
         ratedShop = request.data.get('ratedShop')
         ratedProduct = request.data.get('ratedProduct')
+        product = self.queryset.filter(id=pk).first()
+        user = request.user
         if request.method == 'POST':
 
-            product = self.queryset.filter(id=pk).first()
             productSell = ProductSell.objects.filter(product_id=product.id).first()
             shop = Shop.objects.get(id=product.shop_id)
 
-            r = self.get_object().rating_set.create(ratedShop=ratedShop, ratedProduct=ratedProduct, user=request.user,
+            r = self.get_object().rating_set.create(ratedShop=ratedShop, ratedProduct=ratedProduct, user=user,
                                                     product=product)
             rated_products_len = Rating.objects.filter(product_id=r.product_id)
             if rated_products_len == 0:
@@ -432,10 +433,14 @@ class ProductViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
                 totalPointShop = rated_products_len.aggregate(total_sum=Sum('ratedShop'))['total_sum']
                 shop.rated = totalPointShop / len(rated_products_len)
                 shop.save()
+            # Tạo sẵn comment tại đây để tạo 1 hàng ManyToMany
+            comment = Comment.objects.create(user=user, content="", product=product)
+            comment.save()
+            rating_comment = Rating_Comment.objects.create(rating=r, comment=comment, product=product, user=user)
+            rating_comment.save()
             return Response(serializers.RatingSerializer(r).data, status=status.HTTP_201_CREATED)
         elif request.method == 'PATCH':
             # Xử lý yêu cầu PATCH cho đánh giá
-            product = self.queryset.filter(id=pk).first()
             productSell = ProductSell.objects.filter(product_id=product.id).first()
 
             shop = Shop.objects.get(id=product.shop_id)
@@ -463,16 +468,25 @@ class ProductViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
         ratings = self.get_object().rating_set.select_related('user').order_by("-id")  # user nằm trong rating
         return Response(serializers.RatingSerializer(ratings, many=True).data, status=status.HTTP_200_OK)
 
-    # POST/PATCH/DELETE products/{product_id}/comments  <Bear Token is owner>
+    # PATCH/DELETE products/{product_id}/comments  <Bear Token is owner>
     @action(methods=['post', 'patch', 'delete'], url_path="comment", detail=True)
-    def create_update_delete_comment(self, request, pk):
-        if request.method == 'POST':
-            content = request.data.get('content')
+    def update_delete_comment(self, request, pk):
+        if request.method == 'PATCH':
             product = self.queryset.filter(id=pk).first()
-            comment = self.get_object().comment_set.create(content=content, user=request.user,
-                                                           product=product)
-        return Response(serializers.CommentSerializer(comment).data, status=status.HTTP_201_CREATED)
-    # GET products/{product_id}/comments
+            content = request.data.get('content')
+            comment = self.get_object().comment_set.filter(user_id=request.user.id, product_id=product.id).last()
+            comment.content = content
+            comment.save()
+
+        return Response(serializers.CommentSerializer(comment).data, status=status.HTTP_200_OK)
+
+    # GET products/{product_id}/ratings_comments
+    @action(methods=['get'], url_path="rating_comment", detail=True)
+    def get_all_rating_comment_product(self, request, pk):
+        rating_comment = Rating_Comment.objects.prefetch_related('comment').filter(product_id=pk).filter(
+            active=True).order_by("-id")
+        return Response(serializers.Rating_Comment_Serializer(rating_comment, many=True).data,
+                        status=status.HTTP_200_OK)
 
 
 # =============================== (^3^) =============================== #
