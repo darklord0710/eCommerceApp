@@ -5,6 +5,8 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import logout, authenticate, login
 from oauth2_provider.models import AccessToken, RefreshToken
 from django.utils import timezone
+from rest_framework.views import APIView
+
 from .models import Category, User, Product, Shop, ProductInfo, ProductImageDetail, ProductImagesColors, ProductVideos, \
     ProductSell, Voucher, VoucherCondition, VoucherType, ConfirmationShop, \
     StatusConfirmationShop, Rating, Comment, Rating_Comment, Like
@@ -389,24 +391,33 @@ class ProductViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
         opd = self.request.query_params.get("opd")  # order price decrease
         oni = self.request.query_params.get("oni")  # order name increase
         ond = self.request.query_params.get("ond")  # order name decrease
-
-        if n:
-            queries = queries.filter(Q(name__icontains=n) | Q(shop__name__icontains=n))
-            queries = queries.filter()
-        if pmn:
-            queries = queries.filter(price__gte=pmn)
-        if pmx:
-            queries = queries.filter(price__lte=pmx)
-        if opi is not None:
-            queries = queries.order_by('price')
-        if opd is not None:
-            queries = queries.order_by('-price')
-        if oni is not None:
-            queries = queries.order_by('name')
-        if ond is not None:
-            queries = queries.order_by('-name')
+        cate_id = self.request.query_params.get('cate_id')  # filter by category id
+        if self.action == 'list':
+            if n:
+                queries = queries.filter(Q(name__icontains=n) | Q(shop__name__icontains=n))
+                queries = queries.filter()
+            if pmn:
+                queries = queries.filter(price__gte=pmn)
+            if pmx:
+                queries = queries.filter(price__lte=pmx)
+            if opi is not None:
+                queries = queries.order_by('price')
+            if opd is not None:
+                queries = queries.order_by('-price')
+            if oni is not None:
+                queries = queries.order_by('name')
+            if ond is not None:
+                queries = queries.order_by('-name')
+            if cate_id:
+                queries = queries.filter(category_id=cate_id)
 
         return queries
+
+    # GET /products/{product_id}/
+    @action(methods=['get'], url_path="product_detail", detail=True)
+    def get_product_by_id(self, request, pk):
+        product = self.queryset.filter(id=pk).first()
+        return Response(serializers.ProductSerializer(product).data, status=status.HTTP_200_OK)
 
     # POST/products/{product_id}/rating/  <Bear Token is owner>
     # Patch/products/{product_id}/rating/  <Bear Token is owner>
@@ -492,6 +503,37 @@ class ProductViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
                         status=status.HTTP_200_OK)
 
 
+# GET /products/{product_id}/
+class ProductDetailView(APIView):
+    def get(self, request, product_id):
+        try:
+            product = Product.objects.get(id=product_id)
+            shop = Shop.objects.get(id=product.shop_id)
+            images = (product.productimagedetail_set.filter(product_id=product.id))
+            print(images)
+        except Product.DoesNotExist:
+            return Response({"message": "Product not found"}, status=404)
+
+        # Lấy tất cả thông tin liên quan đến sản phẩm
+        product_data = {
+            "id": product.id,
+            "name": product.name,
+            "price": product.price,
+            # Thêm các trường từ các bảng liên quan
+            "info": product.productinfo_set.filter(product_id=product.id).values("id", "origin", "material",
+                                                                                 "description", "manufacture").first(),
+            "images": product.productimagedetail_set.filter(product_id=product.id),
+            # cần custom url Cloudinary nên ko cần lấy values trước
+            "colors": product.productimagescolors_set.filter(product_id=product.id),
+            "videos": product.productvideos_set.filter(product_id=product.id),
+            "sell": product.productsell_set.filter(product_id=product.id).values("id", "sold_quantity", "percent_sale",
+                                                                                 "rating").first(),
+            "shop": shop
+        }
+        return Response(serializers.ProductDetailSerializer(product_data).data, status=status.HTTP_200_OK)
+        # return Response(status=status.HTTP_200_OK)
+
+
 # PATCH/DELETE comments/{comment_id}  <Bear Token is owner> <permission_classes>
 class CommentViewSet(viewsets.ViewSet, generics.DestroyAPIView, generics.UpdateAPIView):
     queryset = Comment.objects.all()
@@ -519,9 +561,16 @@ class CommentViewSet(viewsets.ViewSet, generics.DestroyAPIView, generics.UpdateA
 
 
 class CategoryViewset(viewsets.ViewSet, generics.ListAPIView):
-    queryset = Category.objects.all()
+    queryset = Category.objects.filter(active=True)
     serializer_class = serializers.CategorySerializer
-# GET categories/
+
+    # GET categories/
+    @action(methods=['get'], url_path="products", detail=True)
+    def get_products_by_category(self, request, pk):
+        print(self.queryset)
+        products = Product.objects.filter(category_id=pk, active=True)
+        return Response(serializers.ProductSerializer(products, many=True).data,
+                        status=status.HTTP_200_OK)
 
 # =============================== (^3^) =============================== #
 # GET payment/

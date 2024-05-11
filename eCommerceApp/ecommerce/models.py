@@ -35,8 +35,8 @@ class Category(models.Model):
     name = models.CharField(max_length=50)
     active = models.BooleanField(default=True)
 
-    def __str__(self):
-        return self.name
+    # def __str__(self):
+    #     return self.name
 
 
 class Shop(BaseModel):
@@ -61,7 +61,7 @@ class Product(BaseModel):
 
 
 class ProductImageDetail(models.Model):
-    image = CloudinaryField()
+    image = CloudinaryField(default=None)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, default=None)
 
 

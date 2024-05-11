@@ -2,6 +2,7 @@ from django.urls import path, re_path, include
 from django.shortcuts import redirect
 from rest_framework import routers
 from . import views
+from .views import ProductDetailView
 
 r = routers.DefaultRouter()
 
@@ -18,7 +19,6 @@ r.register('comments', views.CommentViewSet, basename='comments')
 urlpatterns = [
     path('', include(r.urls)),  # tạo api
 
-    # nasun
     path('accounts/login/', views.user_login, name='login'),
     path('accounts/login-with-sms/', views.login_with_sms, name='login_with_sms'),
     # Still not handle enter wrong OTP, expired OTP, Resend
@@ -28,5 +28,7 @@ urlpatterns = [
     path('accounts/logout/', views.log_out, name='logout'),
     path('accounts/verify-otp/', views.verify_otp, name='verify_otp'),
 
-    # controller
+    # api
+    path('products/<int:product_id>/', ProductDetailView.as_view(), name='product_detail'),
+
 ]

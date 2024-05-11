@@ -1,3 +1,6 @@
+from cloudinary.models import CloudinaryField
+from cloudinary.templatetags import cloudinary
+
 from .models import Category, User, Product, Shop, ProductInfo, ProductImageDetail, ProductImagesColors, ProductVideos, \
     ProductSell, Voucher, VoucherCondition, VoucherType, ConfirmationShop, StatusConfirmationShop, BaseModel, Rating, \
     Comment, Rating_Comment, Interaction
@@ -9,6 +12,12 @@ from rest_framework import serializers
 class BaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = BaseModel
+
+    def to_representation(self, instance):  # ghi đè 1 trường trong fields
+        rep = super().to_representation(instance)
+        rep['img'] = instance.img.url
+
+        return rep
 
 
 class UserSerializer(ModelSerializer):
@@ -36,14 +45,6 @@ class UserSerializer(ModelSerializer):
         return rep
 
 
-class ShopSerializer(ModelSerializer):
-    # user = UserSerializer()
-
-    class Meta:
-        model = Shop
-        fields = ['id', 'name', 'following', 'followed', 'rating']
-
-
 class StatusConfirmationShop(ModelSerializer):
     class Meta:
         model = StatusConfirmationShop
@@ -65,10 +66,62 @@ class ConfirmationShopSerializer(ModelSerializer):
         return rep
 
 
+#####################   Category and Product and Shop  #####################
+
+class ShopSerializer(BaseSerializer):
+    # user = UserSerializer()
+
+    class Meta:
+        model = Shop
+        fields = ['id', 'img', 'name', 'following', 'followed', 'rated']
+
+
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = '__all__'
+        fields = ['id', 'name']
+
+
+class ProductInfoSerializer(ModelSerializer):
+    class Meta:
+        model = ProductInfo
+        fields = ["id", "origin", "material", "description", "manufacture"]
+
+
+class ProductImageDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductImageDetail
+        fields = ['id', 'image']
+
+    def to_representation(self, instance):  # ghi đè 1 trường trong fields
+        rep = super().to_representation(instance)
+        rep['image'] = instance.image.url
+
+        return rep
+
+
+class ProductImagesColorsSerializer(ModelSerializer):
+    class Meta:
+        model = ProductImagesColors
+        fields = ["id", "name_color", "url_image"]
+
+    def to_representation(self, instance):  # ghi đè 1 trường trong fields
+        rep = super().to_representation(instance)
+        rep['url_image'] = instance.url_image.url
+
+        return rep
+
+
+class ProductVideoSerializer(ModelSerializer):
+    class Meta:
+        model = ProductVideos
+        fields = ["id", "url_video"]
+
+    def to_representation(self, instance):  # ghi đè 1 trường trong fields
+        rep = super().to_representation(instance)
+        rep['url_video'] = instance.url_video.url
+
+        return rep
 
 
 class ProductSellSerializer(serializers.ModelSerializer):
@@ -98,6 +151,21 @@ class ProductSerializer(BaseSerializer):
             representation['rating'] = 0.0
         return representation
 
+
+class ProductDetailSerializer(serializers.ModelSerializer):
+    info = ProductInfoSerializer()
+    images = ProductImageDetailSerializer(many=True)
+    colors = ProductImagesColorsSerializer(many=True)
+    videos = ProductVideoSerializer(many=True)
+    sell = ProductSellSerializer()
+    shop = ShopSerializer()
+
+    class Meta:
+        model = Product
+        fields = ['id', 'name', 'info', 'images', 'colors', 'videos', 'sell', 'shop']
+
+
+#####################   UserLogin   #######################
 
 class UserLoginSerializer(serializers.Serializer):
     phone = serializers.CharField()

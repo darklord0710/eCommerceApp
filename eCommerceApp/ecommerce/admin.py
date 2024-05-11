@@ -568,9 +568,7 @@ class ConfirmationShopAdmin(BasePermissionChecker, admin.ModelAdmin):
         # Danh sách các tên nhóm cần gán quyền
         group_names = ['CATEGORY_MANAGER', 'PRODUCT_MANAGER', 'PRODUCTIMAGEDETAIL_MANAGER',
                        'PRODUCTIMAGESCOLORS_MANAGER', 'PRODUCTINFO_MANAGER', 'PRODUCTVIDEOS_MANAGER',
-                       'PRODUCTSELL_MANAGER'
-                       'SHOP_MANAGER',
-                       'VENDOR_MANAGER', ]
+                       'PRODUCTSELL_MANAGER', 'SHOP_MANAGER', 'VENDOR_MANAGER', ]
 
         # Danh sách các tên quyền cần gán
         permissions_to_assign = ['view_category', 'view_product', 'add_product', 'change_product', 'delete_product',
@@ -595,25 +593,28 @@ class ConfirmationShopAdmin(BasePermissionChecker, admin.ModelAdmin):
 
             user.is_vendor = True
             user.is_staff = True
-            user.save()
 
             shop = Shop()
             shop.img = 'https://res.cloudinary.com/diwxda8bi/image/upload/v1712904005/default-avatar-icon-of-social-media-user-vector_nr0hob.jpg'
             shop.active = True
             shop.name = user.username
             shop.user_id = user.id
+            try:
+                for group_name in group_names:
+                    # Lấy nhóm
+                    group = Group.objects.get(name=group_name)
+                    # Thêm người dùng vào nhóm
+                    group.user_set.add(user)
+
+                # Gán quyền cá nhân cho người dùng từ danh sách tên quyền
+                for permission_name in permissions_to_assign:
+                    permission = Permission.objects.get(codename=permission_name)
+                    user.user_permissions.add(permission)
+            except Exception as ex:
+                print(ex)
+
+            user.save()
             shop.save()
-
-            for group_name in group_names:
-                # Lấy nhóm
-                group = Group.objects.get(name=group_name)
-                # Thêm người dùng vào nhóm
-                group.user_set.add(user)
-
-            # Gán quyền cá nhân cho người dùng từ danh sách tên quyền
-            for permission_name in permissions_to_assign:
-                permission = Permission.objects.get(codename=permission_name)
-                user.user_permissions.add(permission)
 
         # Cập nhật trường status của các đối tượng được chọn thành Status có id là 1
         queryset.update(status_id=1)
