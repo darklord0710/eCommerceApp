@@ -2,7 +2,7 @@ from django.urls import path, re_path, include
 from django.shortcuts import redirect
 from rest_framework import routers
 from . import views
-from .views import ProductDetailView
+from .views import ProductDetailView, ShopCategoriesApiView
 
 r = routers.DefaultRouter()
 
@@ -12,8 +12,7 @@ r.register('users', views.UserViewSet)
 r.register('categories', views.CategoryViewset, basename='categories')
 r.register('products', views.ProductViewSet, basename='products')
 r.register('comments', views.CommentViewSet, basename='comments')
-
-# r.register('shops', views.ShopViewSet, basename='shops')
+r.register('shops', views.ShopViewSet, basename='shops')
 # r.register('login', views.LoginWithPasswordViewSet, basename='login-with-password')
 
 urlpatterns = [
@@ -30,5 +29,6 @@ urlpatterns = [
 
     # api
     path('products/<int:product_id>/', ProductDetailView.as_view(), name='product_detail'),
+    path('shop/<int:shop_id>/categories/', ShopCategoriesApiView.as_view(), name='category_shop'),
 
 ]

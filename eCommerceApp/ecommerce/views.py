@@ -1,6 +1,7 @@
-from datetime import datetime
 import requests
 import cloudinary.uploader, random
+from django.core.serializers import serialize
+from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.contrib.auth import logout, authenticate, login
 from oauth2_provider.models import AccessToken, RefreshToken
@@ -15,7 +16,7 @@ from . import serializers, perms, pagination
 from rest_framework.decorators import action, api_view, authentication_classes, permission_classes
 from rest_framework.response import Response
 from django.core.cache import cache
-from django.db.models import Q
+from django.db.models import Q, Count, F
 from django.db.models import Sum
 
 
@@ -356,14 +357,21 @@ class UserViewSet(viewsets.ViewSet, generics.CreateAPIView):
 # *location_shop, *shipping unit, ratings, 1st latest comments)
 
 
-class ShopViewSet(viewsets.ViewSet, generics.CreateAPIView):
+class ShopViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
     queryset = Shop.objects.filter(active=True)
     serializer_class = serializers.ShopSerializer
-    parser_classes = [parsers.MultiPartParser, ]  # to receive file
 
-    # POST/PATCH/DELETE shops/{shop_id}/ratings  <Bear Token is owner>
-    # POST/PATCH/DELETE shops/{shop_id}/comments  <Bear Token is owner>
-    # GET shops/{shop_id}/comments
+    # GET /shops/{shop_id}/
+    @action(methods=['get'], url_path="shop", detail=True)
+    def get_shop_by_id(self, request, pk):
+        shop = self.queryset.filter(id=pk).first()
+        return Response(serializers.ShopSerializer(shop).data, status=status.HTTP_200_OK)
+
+    # GET /shops/{shop_id}/products
+    @action(methods=['get'], url_path="products", detail=True)
+    def get_product_by_shop(self, request, pk):
+        product = Product.objects.filter(shop_id=pk).all()
+        return Response(serializers.ProductSerializer(product, many=True).data, status=status.HTTP_200_OK)
 
 
 class ProductViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
@@ -508,9 +516,7 @@ class ProductDetailView(APIView):
     def get(self, request, product_id):
         try:
             product = Product.objects.get(id=product_id)
-            shop = Shop.objects.get(id=product.shop_id)
-            images = (product.productimagedetail_set.filter(product_id=product.id))
-            print(images)
+
         except Product.DoesNotExist:
             return Response({"message": "Product not found"}, status=404)
 
@@ -528,10 +534,16 @@ class ProductDetailView(APIView):
             "videos": product.productvideos_set.filter(product_id=product.id),
             "sell": product.productsell_set.filter(product_id=product.id).values("id", "sold_quantity", "percent_sale",
                                                                                  "rating").first(),
-            "shop": shop
         }
         return Response(serializers.ProductDetailSerializer(product_data).data, status=status.HTTP_200_OK)
-        # return Response(status=status.HTTP_200_OK)
+
+
+class ShopCategoriesApiView(APIView):
+    def get(self, request, shop_id):
+        result = Category.objects.annotate(product_count=Count('product')).filter(product__shop__isnull=False).values(
+            'name', 'product_count')
+        serialized_data = serializers.ShopCategoriesSerializer(result, many=True).data
+        return JsonResponse(serialized_data, safe=False)
 
 
 # PATCH/DELETE comments/{comment_id}  <Bear Token is owner> <permission_classes>

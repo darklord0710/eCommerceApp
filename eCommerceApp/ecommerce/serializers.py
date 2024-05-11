@@ -69,8 +69,6 @@ class ConfirmationShopSerializer(ModelSerializer):
 #####################   Category and Product and Shop  #####################
 
 class ShopSerializer(BaseSerializer):
-    # user = UserSerializer()
-
     class Meta:
         model = Shop
         fields = ['id', 'img', 'name', 'following', 'followed', 'rated']
@@ -158,11 +156,15 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     colors = ProductImagesColorsSerializer(many=True)
     videos = ProductVideoSerializer(many=True)
     sell = ProductSellSerializer()
-    shop = ShopSerializer()
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'info', 'images', 'colors', 'videos', 'sell', 'shop']
+        fields = ['id', 'name', 'info', 'images', 'colors', 'videos', 'sell']
+
+
+class ShopCategoriesSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    product_count = serializers.IntegerField()
 
 
 #####################   UserLogin   #######################

@@ -29,7 +29,6 @@ MEDIA_ROOT = '%s/ecommerce/static/' % BASE_DIR
 
 CKEDITOR_UPLOAD_PATH = "ckeditors/images/"
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
@@ -40,7 +39,6 @@ SECRET_KEY = 'django-insecure-q)&fo0q0l7+gne)4nawm6c$&lhvv_b681&!!1!o@%_9o*i-0t-
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
-
 
 # Application definition
 
@@ -100,7 +98,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'eCommerceApp.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
@@ -111,11 +108,11 @@ DATABASES = {
         'USER': 'root',
         'PASSWORD': 'root',
         'HOST': '',
+
     }
 }
 
 AUTH_USER_MODEL = 'ecommerce.User'  # khai báo lớp User của mình để chứng thực
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
@@ -135,7 +132,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
@@ -146,7 +142,6 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
