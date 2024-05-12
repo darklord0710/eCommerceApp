@@ -2,7 +2,7 @@ from cloudinary.models import CloudinaryField
 from cloudinary.templatetags import cloudinary
 
 from .models import Category, User, Product, Shop, ProductInfo, ProductImageDetail, ProductImagesColors, ProductVideos, \
-    ProductSell, Voucher, VoucherCondition, VoucherType, ConfirmationShop, StatusConfirmationShop, BaseModel, Rating, \
+    ProductSell, ConfirmationShop, StatusConfirmationShop, BaseModel, Rating, \
     Comment, Rating_Comment, Interaction
 
 from rest_framework.serializers import ModelSerializer
@@ -57,7 +57,7 @@ class ConfirmationShopSerializer(ModelSerializer):
 
     class Meta:
         model = ConfirmationShop
-        fields = ['id', 'user', 'status', 'citizen_identification_image']
+        fields = ['id', 'user', 'status', 'citizen_identification_image', 'note']
 
     def to_representation(self, instance):  # ghi đè 1 trường trong fields
         rep = super().to_representation(instance)
@@ -125,7 +125,7 @@ class ProductVideoSerializer(ModelSerializer):
 class ProductSellSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductSell
-        fields = ['id', 'sold_quantity', 'percent_sale', 'rating']
+        fields = ['id', 'sold_quantity', 'percent_sale', 'rating', 'delivery_price']
 
 
 class ProductSerializer(BaseSerializer):
@@ -134,7 +134,7 @@ class ProductSerializer(BaseSerializer):
 
     class Meta:
         model = Product
-        fields = ['id', 'img', 'name', 'price', 'sold_quantity', 'rating']
+        fields = ['id', 'img', 'name', 'price', 'sold_quantity', 'rating', ]
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
@@ -156,10 +156,11 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     colors = ProductImagesColorsSerializer(many=True)
     videos = ProductVideoSerializer(many=True)
     sell = ProductSellSerializer()
+    shop = ShopSerializer()
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'info', 'images', 'colors', 'videos', 'sell']
+        fields = ['id', 'name', 'info', 'images', 'colors', 'videos', 'sell', 'shop']
 
 
 class ShopCategoriesSerializer(serializers.Serializer):

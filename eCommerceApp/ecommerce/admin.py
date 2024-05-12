@@ -3,7 +3,7 @@ from django import forms
 from ckeditor_uploader.widgets import CKEditorUploadingWidget
 from django.utils.html import mark_safe
 from .models import Category, User, Product, Shop, ProductInfo, ProductImageDetail, ProductImagesColors, ProductVideos, \
-    ProductSell, Voucher, VoucherCondition, VoucherType, ConfirmationShop, StatusConfirmationShop
+    ProductSell, ConfirmationShop, StatusConfirmationShop
 from django.contrib.auth.models import Group, Permission
 from django.db.models import QuerySet
 
@@ -467,10 +467,10 @@ class ProductSellAdmin(BasePermissionChecker, admin.ModelAdmin):
         return self.has_permission(request, 'PRODUCTSELL_MANAGER', 'delete')
 
 
-class VoucherConditionInline(admin.StackedInline):
-    model = VoucherCondition
-    extra = 1
-    max_num = 1
+# class VoucherConditionInline(admin.StackedInline):
+#     model = VoucherCondition
+#     extra = 1
+#     max_num = 1
 
 
 class VoucherTypeAdmin(BasePermissionChecker, admin.ModelAdmin):
@@ -491,47 +491,47 @@ class VoucherTypeAdmin(BasePermissionChecker, admin.ModelAdmin):
         return self.has_permission(request, 'VOUCHERTYPE_MANAGER', 'delete')
 
 
-class VoucherAdmin(BasePermissionChecker, admin.ModelAdmin):
-    list_display = ['id', 'my_image', 'name', 'code', 'maximum_time_used', 'description', 'active']
-    search_fields = ['id', 'name', 'code']
-    list_filter = ['name']
+# class VoucherAdmin(BasePermissionChecker, admin.ModelAdmin):
+#     list_display = ['id', 'my_image', 'name', 'code', 'maximum_time_used', 'description', 'active']
+#     search_fields = ['id', 'name', 'code']
+#     list_filter = ['name']
+#
+#     inlines = [VoucherConditionInline]
+#
+#     def my_image(self, voucher):
+#         if voucher.img:
+#             return mark_safe(f"<img width='100' height='100' src='{voucher.img.url}' />")
+#
+#     def has_view_permission(self, request, obj=None):
+#         return self.has_permission(request, 'VOUCHER_MANAGER', 'view')
+#
+#     def has_add_permission(self, request):
+#         return self.has_permission(request, 'VOUCHER_MANAGER', 'add')
+#
+#     def has_change_permission(self, request, obj=None):
+#         return self.has_permission(request, 'VOUCHER_MANAGER', 'change')
+#
+#     def has_delete_permission(self, request, obj=None):
+#         return self.has_permission(request, 'VOUCHER_MANAGER', 'delete')
 
-    inlines = [VoucherConditionInline]
 
-    def my_image(self, voucher):
-        if voucher.img:
-            return mark_safe(f"<img width='100' height='100' src='{voucher.img.url}' />")
-
-    def has_view_permission(self, request, obj=None):
-        return self.has_permission(request, 'VOUCHER_MANAGER', 'view')
-
-    def has_add_permission(self, request):
-        return self.has_permission(request, 'VOUCHER_MANAGER', 'add')
-
-    def has_change_permission(self, request, obj=None):
-        return self.has_permission(request, 'VOUCHER_MANAGER', 'change')
-
-    def has_delete_permission(self, request, obj=None):
-        return self.has_permission(request, 'VOUCHER_MANAGER', 'delete')
-
-
-class VoucherConditionAdmin(BasePermissionChecker, admin.ModelAdmin):
-    list_display = ['id', 'voucher_id', 'order_fee_min', 'voucher_sale', 'voucher_sale_max', 'time_usable',
-                    'time_expired']
-    search_fields = ['id', 'time_usable', 'time_expired']
-    list_filter = ['id', 'order_fee_min', 'voucher_sale_max', 'time_usable', 'time_expired']
-
-    def has_view_permission(self, request, obj=None):
-        return self.has_permission(request, 'VOUCHERCONDITION_MANAGER', 'view')
-
-    def has_add_permission(self, request):
-        return self.has_permission(request, 'VOUCHERCONDITION_MANAGER', 'add')
-
-    def has_change_permission(self, request, obj=None):
-        return self.has_permission(request, 'VOUCHERCONDITION_MANAGER', 'change')
-
-    def has_delete_permission(self, request, obj=None):
-        return self.has_permission(request, 'VOUCHERCONDITION_MANAGER', 'delete')
+# class VoucherConditionAdmin(BasePermissionChecker, admin.ModelAdmin):
+#     list_display = ['id', 'voucher_id', 'order_fee_min', 'voucher_sale', 'voucher_sale_max', 'time_usable',
+#                     'time_expired']
+#     search_fields = ['id', 'time_usable', 'time_expired']
+#     list_filter = ['id', 'order_fee_min', 'voucher_sale_max', 'time_usable', 'time_expired']
+#
+#     def has_view_permission(self, request, obj=None):
+#         return self.has_permission(request, 'VOUCHERCONDITION_MANAGER', 'view')
+#
+#     def has_add_permission(self, request):
+#         return self.has_permission(request, 'VOUCHERCONDITION_MANAGER', 'add')
+#
+#     def has_change_permission(self, request, obj=None):
+#         return self.has_permission(request, 'VOUCHERCONDITION_MANAGER', 'change')
+#
+#     def has_delete_permission(self, request, obj=None):
+#         return self.has_permission(request, 'VOUCHERCONDITION_MANAGER', 'delete')
 
 
 class StatusConfirmationShopAdmin(BasePermissionChecker, admin.ModelAdmin):
@@ -681,9 +681,9 @@ admin.site.register(ProductImageDetail, ProductImageDetailAdmin)
 admin.site.register(ProductImagesColors, ProductImagesColorsAdmin)
 admin.site.register(ProductVideos, ProductVideosAdmin)
 admin.site.register(ProductSell, ProductSellAdmin)
-admin.site.register(VoucherType, VoucherTypeAdmin)
-admin.site.register(Voucher, VoucherAdmin)
-admin.site.register(VoucherCondition, VoucherConditionAdmin)
+# admin.site.register(VoucherType, VoucherTypeAdmin)
+# admin.site.register(Voucher, VoucherAdmin)
+# admin.site.register(VoucherCondition, VoucherConditionAdmin)
 admin.site.unregister(Group)
 admin.site.register(Group, CustomGroupAdmin)
 admin.site.register(StatusConfirmationShop, StatusConfirmationShopAdmin)

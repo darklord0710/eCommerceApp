@@ -16,8 +16,11 @@ class User(AbstractUser):
 
 
 class UserAddresses(models.Model):
+    name = models.CharField(max_length=100)
+    phone_number = models.CharField(max_length=10, null=False)
     address = models.CharField(max_length=100, null=False)
-    user_details = models.ForeignKey(User, on_delete=models.CASCADE)
+    default = models.BooleanField(default=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
 
 
 class BaseModel(models.Model):
@@ -93,66 +96,64 @@ class ProductInfo(models.Model):
 
 
 class ProductSell(models.Model):
+    delivery_price = models.FloatField(null=False, default=0)
     sold_quantity = models.IntegerField(null=False, default=0)
     percent_sale = models.IntegerField(default=0, null=False)
     rating = models.FloatField(null=False, default=0)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, default=None)
 
 
-class ShippingMethod(models.Model):
-    name = models.CharField(max_length=30)
-    fee = models.FloatField()
+# class VoucherType(models.Model):
+#     name = models.CharField(max_length=30, unique=True, null=False)
+#     key = models.CharField(max_length=10, unique=True, null=False)
 
 
-class PaymentMethod(models.Model):
-    name = models.CharField(max_length=30)
+# class Voucher(BaseModel):
+#     name = models.CharField(max_length=100)
+#     code = models.CharField(max_length=10, unique=True, null=False)
+#     description = RichTextField()
+#     maximum_time_used = models.IntegerField(default=0)
+#     voucher_type = models.ForeignKey(VoucherType, on_delete=models.CASCADE, default=None)
 
 
-class VoucherType(models.Model):
-    name = models.CharField(max_length=30, unique=True, null=False)
-    key = models.CharField(max_length=10, unique=True, null=False)
+# class VoucherCondition(models.Model):
+#     order_fee_min = models.FloatField(default=0)
+#     voucher_sale = models.FloatField(default=0)
+#     voucher_sale_max = models.FloatField(default=0)
+#     time_usable = models.DateTimeField()
+#     time_expired = models.DateTimeField()
+#     voucher = models.ForeignKey(Voucher, on_delete=models.CASCADE, default=None)
 
 
-class Voucher(BaseModel):
-    name = models.CharField(max_length=100)
-    code = models.CharField(max_length=10, unique=True, null=False)
-    description = RichTextField()
-    maximum_time_used = models.IntegerField(default=0)
-    voucher_type = models.ForeignKey(VoucherType, on_delete=models.CASCADE, default=None)
+# class User_Voucher(models.Model):
+#     user = models.ForeignKey(User, on_delete=models.CASCADE, default=None)
+#     voucher = models.ForeignKey(Voucher, on_delete=models.CASCADE, default=None)
+#     time_used = models.IntegerField(default=0)
 
 
-class VoucherCondition(models.Model):
-    order_fee_min = models.FloatField(default=0)
-    voucher_sale = models.FloatField(default=0)
-    voucher_sale_max = models.FloatField(default=0)
-    time_usable = models.DateTimeField()
-    time_expired = models.DateTimeField()
-    voucher = models.ForeignKey(Voucher, on_delete=models.CASCADE, default=None)
-
-
-class User_Voucher(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, default=None)
-    voucher = models.ForeignKey(Voucher, on_delete=models.CASCADE, default=None)
-    time_used = models.IntegerField(default=0)
+class StatusOrder(models.Model):
+    status = models.CharField(max_length=10, null=False)
 
 
 class Order(models.Model):
-    transportation = models.ForeignKey(ShippingMethod, on_delete=models.PROTECT)
-    payment_method = models.ForeignKey(PaymentMethod, on_delete=models.PROTECT)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    total = models.FloatField(null=False)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    status = models.ForeignKey(StatusOrder, on_delete=models.PROTECT)
+    final_amount = models.FloatField(null=False, default=0)
 
 
-class Orders_Products(models.Model):
+class OrderDetail(models.Model):
+    order_date = models.DateField(auto_now_add=True)
+    recieved_date = models.DateField(null=True)
     quantity = models.IntegerField(null=False)
     price = models.FloatField()
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    userAddresses = models.ForeignKey(UserAddresses, on_delete=models.CASCADE)
 
 
-class Orders_Vouchers(models.Model):
-    order = models.ForeignKey(Order, on_delete=models.PROTECT)
-    voucher = models.ForeignKey(Voucher, on_delete=models.PROTECT)
+# class Orders_Vouchers(models.Model):
+#     order = models.ForeignKey(Order, on_delete=models.PROTECT)
+#     voucher = models.ForeignKey(Voucher, on_delete=models.PROTECT)
 
 
 class Interaction(models.Model):

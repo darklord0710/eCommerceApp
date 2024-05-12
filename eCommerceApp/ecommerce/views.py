@@ -9,7 +9,7 @@ from django.utils import timezone
 from rest_framework.views import APIView
 
 from .models import Category, User, Product, Shop, ProductInfo, ProductImageDetail, ProductImagesColors, ProductVideos, \
-    ProductSell, Voucher, VoucherCondition, VoucherType, ConfirmationShop, \
+    ProductSell, ConfirmationShop, \
     StatusConfirmationShop, Rating, Comment, Rating_Comment, Like
 from rest_framework import viewsets, generics, status, parsers, permissions
 from . import serializers, perms, pagination
@@ -516,6 +516,7 @@ class ProductDetailView(APIView):
     def get(self, request, product_id):
         try:
             product = Product.objects.get(id=product_id)
+            shop = Shop.objects.get(id=product.shop_id)
 
         except Product.DoesNotExist:
             return Response({"message": "Product not found"}, status=404)
@@ -533,14 +534,15 @@ class ProductDetailView(APIView):
             "colors": product.productimagescolors_set.filter(product_id=product.id),
             "videos": product.productvideos_set.filter(product_id=product.id),
             "sell": product.productsell_set.filter(product_id=product.id).values("id", "sold_quantity", "percent_sale",
-                                                                                 "rating").first(),
+                                                                                 "rating", "delivery_price").first(),
+            "shop": shop,
         }
         return Response(serializers.ProductDetailSerializer(product_data).data, status=status.HTTP_200_OK)
 
 
 class ShopCategoriesApiView(APIView):
     def get(self, request, shop_id):
-        result = Category.objects.annotate(product_count=Count('product')).filter(product__shop__isnull=False).values(
+        result = Category.objects.filter(product__shop_id=shop_id).annotate(product_count=Count('product__id')).values(
             'name', 'product_count')
         serialized_data = serializers.ShopCategoriesSerializer(result, many=True).data
         return JsonResponse(serialized_data, safe=False)
