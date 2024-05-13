@@ -183,6 +183,16 @@ class Rating_Comment(Interaction):
     active = models.BooleanField(default=True)
 
 
+class ReplyComment(models.Model):
+    created_date = models.DateField(auto_now_add=True, )
+    content = RichTextField(null=False)
+    active = models.BooleanField(default=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    parent_comment = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
+    isParentComment = models.BooleanField(default=False)
+
+
 class StatusConfirmationShop(models.Model):
     status_content = models.CharField(max_length=100, null=True)
 

@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 
 from .models import Category, User, Product, Shop, ProductInfo, ProductImageDetail, ProductImagesColors, ProductVideos, \
     ProductSell, ConfirmationShop, \
-    StatusConfirmationShop, Rating, Comment, Rating_Comment, Like
+    StatusConfirmationShop, Rating, Comment, Rating_Comment, Like, ReplyComment
 from rest_framework import viewsets, generics, status, parsers, permissions
 from . import serializers, perms, pagination
 from rest_framework.decorators import action, api_view, authentication_classes, permission_classes
@@ -374,6 +374,14 @@ class ShopViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
         return Response(serializers.ProductSerializer(product, many=True).data, status=status.HTTP_200_OK)
 
 
+class ShopCategoriesApiView(APIView):
+    def get(self, request, shop_id):
+        result = Category.objects.filter(product__shop_id=shop_id).annotate(product_count=Count('product__id')).values(
+            'name', 'product_count')
+        serialized_data = serializers.ShopCategoriesSerializer(result, many=True).data
+        return JsonResponse(serialized_data, safe=False)
+
+
 class ProductViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
     pagination_class = pagination.ProductPaginator
     # GET products/
@@ -384,7 +392,7 @@ class ProductViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
     # -> getByName/Price/Shop , arrangeByName/Price, paginate 5 products/page
 
     def get_permissions(self):
-        if self.action in ['create_update_rating', 'update_delete_comment']:
+        if self.action in ['create_update_rating', 'update_delete_comment', 'get_post_replyComment_product']:
             return [permissions.IsAuthenticated()]
 
         return [permissions.AllowAny(), ]
@@ -513,8 +521,47 @@ class ProductViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
         return Response(serializers.Rating_Comment_Serializer(rating_comment, many=True).data,
                         status=status.HTTP_200_OK)
 
+    @action(methods=['get', 'post'], url_path='replyComment', detail=True)
+    def get_post_replyComment_product(self, request, pk):
+        product = Product.objects.get(id=pk)
+        if request.method == 'POST':
+            user = request.user
+            content = request.data.get('content')
+            parent_comment_id = request.data.get('parent_comment_id')
 
-# GET /products/{product_id}/
+            if parent_comment_id:
+                parent_comment = ReplyComment.objects.filter(id=parent_comment_id).first()
+                replyComment = ReplyComment.objects.create(user=user, content=content, parent_comment=parent_comment,
+                                                           product=product)
+                replyComment.save()
+            else:
+                replyComment = ReplyComment.objects.create(user=user, content=content, product=product,
+                                                           isParentComment=True)
+                replyComment.save()
+
+            return Response(serializers.ReplyCommentSerializer(replyComment).data, status=status.HTTP_200_OK)
+
+        replyComments = ReplyComment.objects.filter(product_id=pk, active=True).order_by("-id")
+        return Response(serializers.ReplyCommentSerializer(replyComments, many=True).data, )
+
+    @action(methods=['get'], url_path='replyParentComment', detail=True)
+    def get_replyParentComment_product(self, request, pk):
+        replyParentComments = ReplyComment.objects.filter(product_id=pk, active=True, isParentComment=True).order_by(
+            "-id")
+        return Response(serializers.ReplyCommentSerializer(replyParentComments, many=True).data, )
+
+
+# GET products/{product_id}/replyParentComment/{replyComment_id}/replyChildComments/
+class ReplyChildCommentView(APIView):
+    def get(self, request, product_id, replyComment_id):
+        product = Product.objects.get(id=product_id)
+        replyChildComments = ReplyComment.objects.filter(isParentComment=False,
+                                                         parent_comment_id=replyComment_id)
+        return Response(serializers.ReplyCommentSerializer(replyChildComments, many=True).data,
+                        status=status.HTTP_200_OK)
+
+
+# GET products/{product_id}/
 class ProductDetailView(APIView):
     def get(self, request, product_id):
         try:
@@ -541,14 +588,6 @@ class ProductDetailView(APIView):
             "shop": shop,
         }
         return Response(serializers.ProductDetailSerializer(product_data).data, status=status.HTTP_200_OK)
-
-
-class ShopCategoriesApiView(APIView):
-    def get(self, request, shop_id):
-        result = Category.objects.filter(product__shop_id=shop_id).annotate(product_count=Count('product__id')).values(
-            'name', 'product_count')
-        serialized_data = serializers.ShopCategoriesSerializer(result, many=True).data
-        return JsonResponse(serialized_data, safe=False)
 
 
 # PATCH/DELETE comments/{comment_id}  <Bear Token is owner> <permission_classes>

@@ -3,7 +3,7 @@ from cloudinary.templatetags import cloudinary
 
 from .models import Category, User, Product, Shop, ProductInfo, ProductImageDetail, ProductImagesColors, ProductVideos, \
     ProductSell, ConfirmationShop, StatusConfirmationShop, BaseModel, Rating, \
-    Comment, Rating_Comment, Interaction
+    Comment, Rating_Comment, Interaction, ReplyComment
 
 from rest_framework.serializers import ModelSerializer
 from rest_framework import serializers
@@ -265,3 +265,11 @@ class Rating_Comment_Serializer(serializers.ModelSerializer):
     class Meta:
         model = Rating_Comment
         fields = ['id', 'comment', 'user', 'rating']
+
+
+class ReplyCommentSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+
+    class Meta:
+        model = ReplyComment
+        fields = ['id', 'created_date', 'content', 'parent_comment_id', 'product_id', 'user']

@@ -30,5 +30,7 @@ urlpatterns = [
     # api
     path('products/<int:product_id>/', ProductDetailView.as_view(), name='product_detail'),
     path('shop/<int:shop_id>/categories/', ShopCategoriesApiView.as_view(), name='category_shop'),
-
+    path('products/<int:product_id>/replyParentComment/<int:replyComment_id>/replyChildComments/',
+         views.ReplyChildCommentView.as_view(),
+         name='reply_parent_comment'),
 ]
