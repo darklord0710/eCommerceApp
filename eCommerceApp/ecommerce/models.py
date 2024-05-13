@@ -172,7 +172,8 @@ class Rating(Interaction):
 
 
 class Comment(Interaction):
-    content = RichTextField()
+    contentProduct = RichTextField(null=True)
+    contentShop = RichTextField(null=True)
     active = models.BooleanField(default=True)
 
 

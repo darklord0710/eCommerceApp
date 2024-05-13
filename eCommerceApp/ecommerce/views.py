@@ -456,7 +456,7 @@ class ProductViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
                 shop.rated = totalPointShop / len(rated_products_len)
                 shop.save()
             # Tạo sẵn comment tại đây để tạo 1 hàng ManyToMany
-            comment = Comment.objects.create(user=user, content="", product=product)
+            comment = Comment.objects.create(user=user, contentShop="", contentProduct="", product=product)
             comment.save()
             rating_comment = Rating_Comment.objects.create(rating=r, comment=comment, product=product, user=user)
             rating_comment.save()
@@ -491,13 +491,16 @@ class ProductViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
         return Response(serializers.RatingSerializer(ratings, many=True).data, status=status.HTTP_200_OK)
 
     # PATCH/DELETE products/{product_id}/comments  <Bear Token is owner>
+    # Chỉ dùng sau khi vừa đánh giá sản phẩm xong , muốn cập nhật xài cái /comments/{comment_id}/
     @action(methods=['post', 'patch', 'delete'], url_path="comment", detail=True)
     def update_delete_comment(self, request, pk):
         if request.method == 'PATCH':
             product = self.queryset.filter(id=pk).first()
-            content = request.data.get('content')
+            contentShop = request.data.get('contentShop')
+            contentProduct = request.data.get('contentProduct')
             comment = self.get_object().comment_set.filter(user_id=request.user.id, product_id=product.id).last()
-            comment.content = content
+            comment.contentShop = contentShop
+            comment.contentProduct = contentProduct
             comment.save()
 
         return Response(serializers.CommentSerializer(comment).data, status=status.HTTP_200_OK)

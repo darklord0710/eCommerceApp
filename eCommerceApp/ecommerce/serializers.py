@@ -234,7 +234,7 @@ class CommentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Comment
-        fields = ['id', 'created_date', 'content', 'user', 'product']
+        fields = ['id', 'created_date', 'contentShop', 'contentProduct', 'user', 'product']
 
 
 ##################### Rating and Comment Dto ####################
@@ -248,13 +248,13 @@ class User_RatingCommentSerializer(serializers.ModelSerializer):
 class Rating_RatingCommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Rating
-        fields = ['id', 'created_date', 'ratedProduct', ]
+        fields = ['id', 'created_date', 'ratedProduct', 'ratedShop']
 
 
 class Comment_RatingCommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
-        fields = ['id', 'created_date', 'content', ]
+        fields = ['id', 'created_date', 'contentShop', 'contentProduct']
 
 
 class Rating_Comment_Serializer(serializers.ModelSerializer):
@@ -264,4 +264,4 @@ class Rating_Comment_Serializer(serializers.ModelSerializer):
 
     class Meta:
         model = Rating_Comment
-        fields = ['id', 'comment', 'user', 'rating', ]
+        fields = ['id', 'comment', 'user', 'rating']
