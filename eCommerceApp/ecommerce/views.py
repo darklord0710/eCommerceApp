@@ -302,7 +302,8 @@ class UserViewSet(viewsets.ViewSet, generics.CreateAPIView):
     serializer_class = serializers.UserSerializer
 
     def get_permissions(self):
-        if self.action in ['get_current_user', 'get_post_patch_confirmationshop', 'get_shop', 'get_user_ratings']:
+        if self.action in ['get_current_user', 'get_post_patch_confirmationshop', 'get_shop', 'get_user_ratings',
+                           'get_post_addresses', 'get_post_orders']:
             return [permissions.IsAuthenticated()]
 
         return [permissions.AllowAny(), ]

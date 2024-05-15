@@ -2,12 +2,52 @@ from django.contrib import admin
 from django import forms
 from ckeditor_uploader.widgets import CKEditorUploadingWidget
 from django.utils.html import mark_safe
-from .models import Category, User, Product, Shop, ProductInfo, ProductImageDetail, ProductImagesColors, ProductVideos, \
-    ProductSell, ConfirmationShop, StatusConfirmationShop
+from .models import *
 from django.contrib.auth.models import Group, Permission
 from django.db.models import QuerySet
+from django.urls import path
+from django.template.response import TemplateResponse
+from django.db.models import Count, Sum
+from django.db.models.functions import ExtractYear, ExtractMonth, ExtractQuarter
 
 APP_NAME = "ecommerce"
+
+
+class MyAdminSite(admin.AdminSite):
+    site_header = 'eCommerce'
+
+    def get_urls(self):
+        return [path('ecommerce-stats', self.stats_view)] + super().get_urls()
+
+    def stats_view(self, request):
+        year = request.GET.get('year')
+        period = request.GET.get('period')
+        stats = OrderDetail.objects.annotate(i1=ExtractYear('order_date')).values('i1').annotate(
+            i2=Count('order__product')).values('i1', 'i2').order_by('i1')
+        stats2 = OrderDetail.objects.annotate(i1=ExtractYear('order_date')).values('i1').annotate(
+            i2=Sum('order__final_amount')).values('i1', 'i2').order_by('i1')
+        if year and not period:
+            stats = OrderDetail.objects.annotate(i1=ExtractYear('order_date')).filter(i1=year).values(
+                'i1').annotate(
+                i2=Count('order__product')).values('i1', 'i2').order_by('i1')
+            stats2 = OrderDetail.objects.annotate(i1=ExtractYear('order_date')).filter(i1=year).values(
+                'i1').annotate(
+                i2=Sum('order__final_amount')).values('i1', 'i2').order_by('i1')
+        elif year and period == "MONTH":
+            stats = OrderDetail.objects.annotate(i1=ExtractMonth('order_date')).filter(order_date__year=year).values(
+                'i1').annotate(i2=Count('order__product_id')).values('i1', 'i2').order_by('i1')
+            stats2 = OrderDetail.objects.annotate(i1=ExtractMonth('order_date')).filter(order_date__year=year).values(
+                'i1').annotate(i2=Sum('order__final_amount')).values('i1', 'i2').order_by('i1')
+        elif year and period == "QUARTER":
+            stats = OrderDetail.objects.annotate(i1=ExtractQuarter('order_date')).filter(order_date__year=year).values(
+                'i1').annotate(i2=Count('order__product_id')).values('i1', 'i2').order_by('i1')
+            stats2 = OrderDetail.objects.annotate(i1=ExtractQuarter('order_date')).filter(order_date__year=year).values(
+                'i1').annotate(i2=Sum('order__final_amount')).values('i1', 'i2').order_by('i1')
+
+        return TemplateResponse(request, 'admin/stats.html', {
+            'stats': stats,
+            'stats2': stats2
+        })
 
 
 class BasePermissionChecker:
@@ -672,6 +712,8 @@ class ConfirmationShopAdmin(BasePermissionChecker, admin.ModelAdmin):
         return self.has_permission(request, 'CONFIRMATIONSHOP_MANAGER', 'delete')
 
 
+admin.site = MyAdminSite(name='eCommerceApp')
+
 admin.site.register([User], CustomUserAdmin)
 admin.site.register(Category, CategoryAdmin)
 admin.site.register(Shop, ShopAdmin)
@@ -684,7 +726,7 @@ admin.site.register(ProductSell, ProductSellAdmin)
 # admin.site.register(VoucherType, VoucherTypeAdmin)
 # admin.site.register(Voucher, VoucherAdmin)
 # admin.site.register(VoucherCondition, VoucherConditionAdmin)
-admin.site.unregister(Group)
+# admin.site.unregister(Group) # khi custom stats thì ko cần nữa
 admin.site.register(Group, CustomGroupAdmin)
 admin.site.register(StatusConfirmationShop, StatusConfirmationShopAdmin)
 admin.site.register(ConfirmationShop, ConfirmationShopAdmin)
