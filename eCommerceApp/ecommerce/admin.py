@@ -7,25 +7,41 @@ from django.contrib.auth.models import Group, Permission
 from django.db.models import QuerySet
 from django.urls import path
 from django.template.response import TemplateResponse
-from django.db.models import Count, Sum
+from django.db.models import Count, Sum, F
 from django.db.models.functions import ExtractYear, ExtractMonth, ExtractQuarter
+from django.contrib.admin.views.decorators import staff_member_required
+from django.utils.decorators import method_decorator
+from django.contrib.auth.decorators import user_passes_test
+from django.urls.base import reverse_lazy
+from django.utils.html import format_html
+from django.urls import reverse
 
 APP_NAME = "ecommerce"
 
 
-class MyAdminSite(admin.AdminSite):
-    site_header = 'eCommerce'
+class MyAdminStatsSite(admin.AdminSite):
+    site_header = 'E-Commerce Administrator'
+
+    def is_admin(user):
+        return user.is_active and user.is_superuser
+
+    def is_vendor_user(user):
+        return user.is_active and user.is_vendor
 
     def get_urls(self):
-        return [path('ecommerce-stats', self.stats_view)] + super().get_urls()
+        return [
+            path('ecommerce-stats', self.stats_view),
+            path('ecommerce-vendor-stats', self.stats_vendor_view),
+        ] + super().get_urls()
 
+    @method_decorator(user_passes_test(is_admin))
     def stats_view(self, request):
         year = request.GET.get('year')
         period = request.GET.get('period')
-        stats = OrderDetail.objects.annotate(i1=ExtractYear('order_date')).values('i1').annotate(
-            i2=Count('order__product')).values('i1', 'i2').order_by('i1')
-        stats2 = OrderDetail.objects.annotate(i1=ExtractYear('order_date')).values('i1').annotate(
-            i2=Sum('order__final_amount')).values('i1', 'i2').order_by('i1')
+
+        stats = None
+        stats2 = None
+
         if year and not period:
             stats = OrderDetail.objects.annotate(i1=ExtractYear('order_date')).filter(i1=year).values(
                 'i1').annotate(
@@ -43,8 +59,51 @@ class MyAdminSite(admin.AdminSite):
                 'i1').annotate(i2=Count('order__product_id')).values('i1', 'i2').order_by('i1')
             stats2 = OrderDetail.objects.annotate(i1=ExtractQuarter('order_date')).filter(order_date__year=year).values(
                 'i1').annotate(i2=Sum('order__final_amount')).values('i1', 'i2').order_by('i1')
+        elif not year and not period:
+            stats = OrderDetail.objects.annotate(i1=ExtractYear('order_date')).values('i1').annotate(
+                i2=Count('order__product')).values('i1', 'i2').order_by('i1')
+            stats2 = OrderDetail.objects.annotate(i1=ExtractYear('order_date')).values('i1').annotate(
+                i2=Sum('order__final_amount')).values('i1', 'i2').order_by('i1')
 
         return TemplateResponse(request, 'admin/stats.html', {
+            'stats': stats,
+            'stats2': stats2
+        })
+
+    @method_decorator(user_passes_test(is_vendor_user))
+    def stats_vendor_view(self, request):
+        year = request.GET.get('year')
+        period = request.GET.get('period')
+        user = request.user
+        shop = Shop.objects.filter(user_id=user.id).first()
+
+        stats = None
+        stats2 = None
+        if not year and not period:
+            stats = OrderDetail.objects.filter(order__product__shop_id=shop.id).annotate(
+                i1=ExtractYear('order_date')).values(
+                'i1').annotate(i2=Sum('order__final_amount')).values('i1', 'i2').order_by('i1')
+            stats2 = Order.objects.filter(product__shop_id=shop.id).values('product__category__name').annotate(
+                i2=Sum('final_amount')).annotate(
+                i1=F('product__category__name')).values('i1', 'i2')
+        elif year and not period:
+            stats = OrderDetail.objects.filter(order__product__shop_id=shop.id, order_date__year=year).annotate(
+                i1=ExtractYear('order_date')).values(
+                'i1').annotate(i2=Sum('order__final_amount')).values('i1', 'i2').order_by('i1')
+            stats2 = OrderDetail.objects.filter(order__product__shop_id=shop.id, order_date__year=year).values(
+                'order__product__category__name').annotate(i2=Sum('order__final_amount')).annotate(
+                i1=F('order__product__category__name')).values('i1', 'i2')
+
+        elif year and period == "MONTH":
+            stats = OrderDetail.objects.filter(order__product__shop_id=shop.id, order_date__year=year).annotate(
+                i1=ExtractMonth('order_date')).values(
+                'i1').annotate(i2=Sum('order__final_amount')).values('i1', 'i2').order_by('i1')
+
+        elif year and period == "QUARTER":
+            stats = OrderDetail.objects.filter(order__product__shop_id=shop.id, order_date__year=year).annotate(
+                i1=ExtractQuarter('order_date')).values(
+                'i1').annotate(i2=Sum('order__final_amount')).values('i1', 'i2').order_by('i1')
+        return TemplateResponse(request, 'admin/statsVendor.html', {
             'stats': stats,
             'stats2': stats2
         })
@@ -712,7 +771,7 @@ class ConfirmationShopAdmin(BasePermissionChecker, admin.ModelAdmin):
         return self.has_permission(request, 'CONFIRMATIONSHOP_MANAGER', 'delete')
 
 
-admin.site = MyAdminSite(name='eCommerceApp')
+admin.site = MyAdminStatsSite(name='eCommerceApp')
 
 admin.site.register([User], CustomUserAdmin)
 admin.site.register(Category, CategoryAdmin)

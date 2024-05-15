@@ -601,7 +601,7 @@ class ProductViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
     # GET products/{product_id}/ratings
     @action(methods=['get'], url_path="ratings", detail=True)
     def get_product_ratings(self, request, pk):
-        ratings = self.get_object().rating_set.select_related('user').order_by("-id")  # user nằm trong rating
+        ratings = self.get_object().rating_set.select_related('user').order_by("-id")  # user,product nằm trong rating
         return Response(serializers.RatingSerializer(ratings, many=True).data, status=status.HTTP_200_OK)
 
     # PATCH/DELETE products/{product_id}/comments  <Bear Token is owner>
