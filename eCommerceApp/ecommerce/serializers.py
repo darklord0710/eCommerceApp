@@ -3,7 +3,8 @@ from cloudinary.templatetags import cloudinary
 
 from .models import Category, User, Product, Shop, ProductInfo, ProductImageDetail, ProductImagesColors, ProductVideos, \
     ProductSell, ConfirmationShop, StatusConfirmationShop, BaseModel, Rating, \
-    Comment, Rating_Comment, Interaction, ReplyComment
+    Comment, Rating_Comment, Interaction, ReplyComment, UserAddresses, Order, StatusOrder, OrderDetail, \
+    OrderProductColor
 
 from rest_framework.serializers import ModelSerializer
 from rest_framework import serializers
@@ -43,6 +44,26 @@ class UserSerializer(ModelSerializer):
         rep = super().to_representation(instance)
         rep['avatar'] = instance.avatar.url if instance.avatar and hasattr(instance.avatar, 'url') else None
         return rep
+
+
+class UserAddressSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+
+    class Meta:
+        model = UserAddresses
+        fields = ['id', 'name', 'phone_number', 'address', 'default', 'user']
+
+
+##################### UserAddressesSerializer Dto ####################
+
+
+class UserAddressSerializerDto(serializers.ModelSerializer):
+    class Meta:
+        model = UserAddresses
+        fields = ['id', 'name', 'phone_number', 'address']
+
+
+##################### Confirmation Shop ####################
 
 
 class StatusConfirmationShop(ModelSerializer):
@@ -160,7 +181,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'info', 'images', 'colors', 'videos', 'sell', 'shop']
+        fields = ['id', 'name', 'price', 'info', 'images', 'colors', 'videos', 'sell', 'shop']
 
 
 class ShopCategoriesSerializer(serializers.Serializer):
@@ -273,3 +294,42 @@ class ReplyCommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = ReplyComment
         fields = ['id', 'created_date', 'content', 'parent_comment_id', 'product_id', 'user']
+
+
+################## Order ####################
+
+class StatusOrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StatusOrder
+        fields = ['status']
+
+
+class OrderConfirmationSerializer(serializers.Serializer):
+    quantity = serializers.IntegerField()
+    product = ProductSerializer()
+    user_address = UserAddressSerializerDto()
+    product_color = ProductImagesColorsSerializer(required=False)
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+    product = ProductSerializer()
+    status = StatusOrderSerializer()
+
+    class Meta:
+        model = Order
+        fields = ['id', 'user', 'product', 'status', 'final_amount']
+
+
+class OrderDetailSerializer(serializers.ModelSerializer):
+    userAddresses = UserAddressSerializerDto()
+
+    class Meta:
+        model = OrderDetail
+        fields = ['id', 'order_date', 'quantity', 'userAddresses']
+
+
+class OrderFinalSerializer(serializers.Serializer):
+    order = OrderSerializer()
+    order_detail = OrderDetailSerializer()
+    order_product_color = serializers.CharField(required=False)

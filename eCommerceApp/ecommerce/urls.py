@@ -8,7 +8,7 @@ r = routers.DefaultRouter()
 
 # api
 # r.register('confirmationshop', views.ConfirmationShop)
-r.register('users', views.UserViewSet)
+r.register('users', views.UserViewSet, basename='users')
 r.register('categories', views.CategoryViewset, basename='categories')
 r.register('products', views.ProductViewSet, basename='products')
 r.register('comments', views.CommentViewSet, basename='comments')
@@ -33,4 +33,14 @@ urlpatterns = [
     path('products/<int:product_id>/replyParentComment/<int:replyComment_id>/replyChildComments/',
          views.ReplyChildCommentView.as_view(),
          name='reply_parent_comment'),
+    path('users/<int:user_id>/addresses/<int:user_address_id>/default', views.UserDefaultAddressView.as_view(),
+         name='default_address'),
+
+    # vn pay api
+    path('index', views.index, name='index'),
+    path('payment', views.payment, name='payment'),
+    path('payment_ipn', views.payment_ipn, name='payment_ipn'),
+    path('payment_return', views.payment_return, name='payment_return'),
+    path('query', views.query, name='query'),
+    path('refund', views.refund, name='refund'),
 ]

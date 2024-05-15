@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 from pathlib import Path
 import cloudinary
 import pymysql
+from django.template.backends import django
 
 pymysql.install_as_MySQLdb()
 
@@ -142,7 +143,7 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 
 USE_TZ = True
-
+    
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
@@ -152,3 +153,14 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# VNPAY CONFIG
+VNPAY_RETURN_URL = 'http://localhost:8000/payment_return'  # get from config
+VNPAY_PAYMENT_URL = 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'  # get from config
+VNPAY_API_URL = 'https://sandbox.vnpayment.vn/merchant_webapi/api/transaction'
+VNPAY_TMN_CODE = 'F9GSCV1D'  # Website ID in VNPAY System, get from config
+VNPAY_HASH_SECRET_KEY = 'JUXOOOXYAUTGHZIWOZVOLQCICSTVEACX'  # Secret key for create checksum,get from config
+
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8000',
+]

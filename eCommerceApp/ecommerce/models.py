@@ -5,7 +5,7 @@ from django.contrib.auth.models import AbstractUser
 from ckeditor.fields import RichTextField
 from cloudinary.models import CloudinaryField
 from django.core.exceptions import ValidationError
-import datetime
+from django import forms
 
 
 class User(AbstractUser):
@@ -132,7 +132,7 @@ class ProductSell(models.Model):
 
 
 class StatusOrder(models.Model):
-    status = models.CharField(max_length=10, null=False)
+    status = models.CharField(max_length=20, null=False)
 
 
 class Order(models.Model):
@@ -146,9 +146,13 @@ class OrderDetail(models.Model):
     order_date = models.DateField(auto_now_add=True)
     recieved_date = models.DateField(null=True)
     quantity = models.IntegerField(null=False)
-    price = models.FloatField()
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
     userAddresses = models.ForeignKey(UserAddresses, on_delete=models.CASCADE)
+
+
+class OrderProductColor(models.Model):
+    product_colors = models.ForeignKey(ProductImagesColors, on_delete=models.CASCADE)
+    order = models.ForeignKey(Order, on_delete=models.CASCADE)
 
 
 # class Orders_Vouchers(models.Model):
@@ -214,3 +218,12 @@ class Like(models.Model):
 
     class Meta:
         unique_together = ('user', 'comment')
+
+
+class PaymentForm(forms.Form):
+    order_id = forms.CharField(max_length=250)
+    order_type = forms.CharField(max_length=20)
+    amount = forms.IntegerField()
+    order_desc = forms.CharField(max_length=100)
+    bank_code = forms.CharField(max_length=20, required=False)
+    language = forms.CharField(max_length=2)
