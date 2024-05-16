@@ -403,10 +403,7 @@ class UserViewSet(viewsets.ViewSet, generics.CreateAPIView):
     @action(methods=['get', 'post'], url_path="orders", detail=True)  # now
     def get_post_orders(self, request, pk):
         if request.method == "POST":
-
-            order_data = {
-
-            }
+            order_data = {}
 
             final_amount = request.data.get('final_amount')
             quantity = request.data.get('quantity')
@@ -602,6 +599,7 @@ class ProductViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
     @action(methods=['get'], url_path="ratings", detail=True)
     def get_product_ratings(self, request, pk):
         ratings = self.get_object().rating_set.select_related('user').order_by("-id")  # user,product nằm trong rating
+        print(ratings.query)
         return Response(serializers.RatingSerializer(ratings, many=True).data, status=status.HTTP_200_OK)
 
     # PATCH/DELETE products/{product_id}/comments  <Bear Token is owner>
@@ -637,24 +635,30 @@ class ProductViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
 
             if parent_comment_id:
                 parent_comment = ReplyComment.objects.filter(id=parent_comment_id).first()
+                parent_comment_order = parent_comment.order
                 replyComment = ReplyComment.objects.create(user=user, content=content, parent_comment=parent_comment,
-                                                           product=product)
+                                                           product=product, order=parent_comment_order)
                 replyComment.save()
             else:
+                parent_comment_order = ReplyComment.objects.filter(isParentComment=True).count()
+
                 replyComment = ReplyComment.objects.create(user=user, content=content, product=product,
-                                                           isParentComment=True)
+                                                           isParentComment=True, order=parent_comment_order)
                 replyComment.save()
 
             return Response(serializers.ReplyCommentSerializer(replyComment).data, status=status.HTTP_200_OK)
 
-        replyComments = ReplyComment.objects.filter(product_id=pk, active=True).order_by("-id")
+        replyComments = ReplyComment.objects.filter(product_id=pk, active=True)
+
         return Response(serializers.ReplyCommentSerializer(replyComments, many=True).data, )
 
     @action(methods=['get'], url_path='replyParentComment', detail=True)
     def get_replyParentComment_product(self, request, pk):
         replyParentComments = ReplyComment.objects.filter(product_id=pk, active=True, isParentComment=True).order_by(
             "-id")
-        return Response(serializers.ReplyCommentSerializer(replyParentComments, many=True).data, )
+
+        return Response(serializers.ReplyCommentSerializer(replyParentComments, many=True).data,
+                        status=status.HTTP_200_OK)
 
     @action(methods=['post'], url_path='confirm_order', detail=True)
     def post_confirm_order(self, request, pk):
@@ -684,8 +688,10 @@ class ProductViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
 class ReplyChildCommentView(APIView):
     def get(self, request, product_id, replyComment_id):
         product = Product.objects.get(id=product_id)
+        parent_comment = ReplyComment.objects.filter(id=replyComment_id).first()
+        order = parent_comment.order
         replyChildComments = ReplyComment.objects.filter(isParentComment=False,
-                                                         parent_comment_id=replyComment_id)
+                                                         order=order)
         return Response(serializers.ReplyCommentSerializer(replyChildComments, many=True).data,
                         status=status.HTTP_200_OK)
 
@@ -774,6 +780,7 @@ def hmacsha512(key, data):
     return hmac.new(byteKey, byteData, hashlib.sha512).hexdigest()
 
 
+@api_view(['GET', 'POST'])
 def payment(request):
     if request.method == 'POST':
         # Process input data and build url payment
@@ -811,14 +818,10 @@ def payment(request):
             vnpay_payment_url = vnp.get_payment_url(settings.VNPAY_PAYMENT_URL, settings.VNPAY_HASH_SECRET_KEY)
             print(vnpay_payment_url)
             return redirect(vnpay_payment_url)
-        else:
-            print("Form input not validate")
     else:
-
         context = {
             "title": "Thanh toán"
         }
-
         return render(request, "payment/payment.html", context)
 
 

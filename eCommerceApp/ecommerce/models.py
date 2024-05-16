@@ -194,6 +194,7 @@ class ReplyComment(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     parent_comment = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
+    order = models.IntegerField(null=False, default=0)
     isParentComment = models.BooleanField(default=False)
 
 
