@@ -10,17 +10,21 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
+import os
 from pathlib import Path
+
 import cloudinary
 import pymysql
-from django.template.backends import django
+from dotenv import load_dotenv
+
+load_dotenv()  # take environment variables from .env.
 
 pymysql.install_as_MySQLdb()
 
 cloudinary.config(
-    cloud_name="diwxda8bi",
-    api_key="358748635141677",
-    api_secret="QBGsplvCUjvxqZFWkpQBWKFT91I"
+    cloud_name=os.getenv('cloud_name'),
+    api_key=os.getenv('api_key'),
+    api_secret=os.getenv('api_secret')
 )
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -34,7 +38,7 @@ CKEDITOR_UPLOAD_PATH = "ckeditors/images/"
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-q)&fo0q0l7+gne)4nawm6c$&lhvv_b681&!!1!o@%_9o*i-0t-'
+SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -104,10 +108,10 @@ WSGI_APPLICATION = 'eCommerceApp.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'ecommerceapp',
-        'USER': 'root',
-        'PASSWORD': 'root',
+        'ENGINE': os.getenv('DB_ENGINE'),
+        'NAME': os.getenv('DB_NAME'),
+        'USER': os.getenv('DB_USER'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
         'HOST': '',
 
     }
@@ -158,8 +162,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 VNPAY_RETURN_URL = 'http://localhost:8000/payment_return'  # get from config
 VNPAY_PAYMENT_URL = 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'  # get from config
 VNPAY_API_URL = 'https://sandbox.vnpayment.vn/merchant_webapi/api/transaction'
-VNPAY_TMN_CODE = '84JIGDIU'  # Website ID in VNPAY System, get from config
-VNPAY_HASH_SECRET_KEY = 'MX7U8PWTHDTK6LBK5J6X90JSQMV2KZTS'  # Secret key for create checksum,get from config
+VNPAY_TMN_CODE = os.getenv('VNPAY_TMN_CODE')  # Website ID in VNPAY System, get from config
+VNPAY_HASH_SECRET_KEY = os.getenv('VNPAY_HASH_SECRET_KEY')  # Secret key for create checksum,get from config
 
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8000',

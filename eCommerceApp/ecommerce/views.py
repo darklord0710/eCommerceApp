@@ -1,4 +1,3 @@
-# VN PAY import
 import hashlib
 import hmac
 import json
@@ -20,13 +19,15 @@ from rest_framework import viewsets, generics, status, parsers, permissions
 from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
 from . import serializers, perms, pagination
 from .models import *
-
 from .vnpay import vnpay
-
 import re
+from dotenv import load_dotenv
+
+load_dotenv()  # take environment variables from .env.
+
+import os
 
 
 def extract_first_number_from_string(s):
@@ -219,8 +220,8 @@ def get_access_token(username, password):
         'grant_type': 'password',
         'username': username,
         'password': password,
-        'client_id': 'huSwBrzoYojItzHqIKGClwAMrbTp9Tb9ktTmOofY',
-        'client_secret': 'VX7Ow4UvEOYY8mOxq9CJ6tput695aR4UcILjxKyZsHVOuCnaH1JhDer19KFiDYh3bH8hkefKy3r5TqfOU4rt4JDgTpG36C9kvlQciXfmYpS2ooivSkyyxSS1aJCGAnBQ',
+        'client_id': os.getenv('APP_CLIENT_ID'),
+        'client_secret': os.getenv('APP_CLIENT_SECRET')
     }
 
     response = requests.post('http://127.0.0.1:8000/o/token/', data=data)
@@ -1085,7 +1086,3 @@ def refund(request):
 
     return JsonResponse(
         {"title": "Kết quả hoàn tiền giao dịch", "response_json": response_json})
-
-# =============================== (^3^) =============================== #
-# GET statistics/revenue/?category_id=&?product_id=?q= (q = mm/qq/yyyy) <Bear Token is owner>
-# GET statistics/{shop_id}/?q= (mm/qq/yyyy) <Bear Token is owner> (return the number of products sold in every category)
