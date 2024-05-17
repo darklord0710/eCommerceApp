@@ -22,11 +22,19 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from . import serializers, perms, pagination
-from .models import Category, User, Product, Shop, ProductSell, ConfirmationShop, \
-    StatusConfirmationShop, Rating, Comment, Rating_Comment, Like, ReplyComment, UserAddresses, StatusOrder, \
-    ProductImagesColors, OrderDetail, OrderProductColor
-from .models import PaymentForm
+from .models import *
+
 from .vnpay import vnpay
+
+import re
+
+
+def extract_first_number_from_string(s):
+    # Tìm số đầu tiên trong chuỗi s
+    match = re.search(r'\d+', s)
+    if match:
+        return match.group(0)
+    return None
 
 
 # from django.utils.http import urlquote
@@ -119,7 +127,7 @@ def user_signup(request):
             #     body=message_body,
             #     to=phone_number
             # )
-            return Response({'message': f'Mã OTP của bạn là {otp}.'})
+            return Response({'message': f'Mã OTP của bạn là {otp}.'}, status=status.HTTP_200_OK)
         return Response({'error': 'Invalid phone or password.'}, status=status.HTTP_401_UNAUTHORIZED)
 
 
@@ -153,7 +161,7 @@ def login_with_sms(request):
             # body=message_body,
             # to=phone_number
             # )
-            return Response({'message': f'Mã OTP của bạn là {otp}.'})
+            return Response({'message': f'Mã OTP của bạn là {otp}.'}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -163,16 +171,19 @@ def verify_otp(request):
         phone = request.session.get('phone')  # lấy phone từ session_phone_loginWithSms | session_phone_signup
         if cache.get('is_login'):  # Nếu là login
             is_login = cache.get('is_login')  # Lấy is_login từ cache_is_login
-            return Response({'success': 'Get form to login successfully'},
-                            {'is_login': is_login, 'phone': phone})
+            return Response({'success': 'Get form to login successfully', 'is_login': is_login, 'phone': phone},
+                            status=status.HTTP_200_OK)
         if cache.get('is_signup'):  # Nếu là signup
             is_signup = cache.get('is_signup')
             # Kiểm tra existing_user $$$$$$$$$$$$$$$$$$4
             if cache.get('existing_user'):
                 existing_user = cache.get('existing_user')
                 cache.delete('existing_user')
-                return Response({'success': f'{phone} was used for {existing_user} user'}, status=status.HTTP_200_OK)
-            return Response({'success': 'Get form to signup successfully'}, {'is_signup': is_signup, 'phone': phone})
+                return Response({'success': f'{phone} was used for {existing_user} user',
+                                 'phone': phone,
+                                 'existing_user': existing_user}, status=status.HTTP_200_OK)
+            return Response({'success': 'Get form to signup successfully', 'is_signup': is_signup, 'phone': phone},
+                            status=status.HTTP_200_OK)
 
     if request.method == 'POST':  # post phone + otp
         serializer = serializers.VerifyOTPSerializer(data=request.data)
@@ -343,10 +354,13 @@ class UserViewSet(viewsets.ViewSet, generics.CreateAPIView):
 
             return Response(serializers.ConfirmationShopSerializer(c).data, status=status.HTTP_201_CREATED)
 
-        # confirmationShops = ConfirmationShop.objects.get(user_id=pk)
-        confirmationShops = self.get_object().confirmationshop_set.select_related(
-            'user')  # chỉ join khi có quan hệ 1-1 # .all() hay không có đều đc ????
-        return Response(serializers.ConfirmationShopSerializer(confirmationShops, many=True).data,
+        confirmationShop = ConfirmationShop.objects.filter(user_id=pk).exists()
+        if not confirmationShop:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        confirmationShop = ConfirmationShop.objects.filter(user_id=pk).first()
+        # confirmationShops = self.get_object().confirmationshop_set.select_related(
+        #     'user').first()  # chỉ join khi có quan hệ 1-1 # .all() hay không có đều đc ????
+        return Response(serializers.ConfirmationShopSerializer(confirmationShop).data,
                         status=status.HTTP_200_OK)
 
     @action(methods=['get'], url_path="shop", detail=True)  # /users/{id}/shop/
@@ -669,7 +683,6 @@ class ProductViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
             confirm_order_data['product'] = product
 
             color_id = request.data.get('color_id')
-            # if color_id:
             if color_id:
                 product_color = ProductImagesColors.objects.get(product_id=product.id, id=color_id)
                 confirm_order_data['product_color'] = product_color
@@ -690,6 +703,12 @@ class ReplyChildCommentView(APIView):
         product = Product.objects.get(id=product_id)
         parent_comment = ReplyComment.objects.filter(id=replyComment_id).first()
         order = parent_comment.order
+
+        replyChildComments = ReplyComment.objects.filter(isParentComment=False, order=order).exists()
+
+        if not replyChildComments:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
         replyChildComments = ReplyComment.objects.filter(isParentComment=False,
                                                          order=order)
         return Response(serializers.ReplyCommentSerializer(replyChildComments, many=True).data,
@@ -738,14 +757,14 @@ class CommentViewSet(viewsets.ViewSet, generics.DestroyAPIView, generics.UpdateA
         return super().get_permissions()
 
     # POST /comments/{comment_id}/like/  <Bear Token is owner> <permission_classes>
-    @action(methods=['post'], url_path="like", detail=True)
-    def like_comment(self, request, pk):
-        like, created = Like.objects.get_or_create(user=request.user, comment=self.get_object())
-        if not created:
-            like.active = not like.active
-            like.save()
-
-        return Response(status=status.HTTP_200_OK)
+    # @action(methods=['post'], url_path="like", detail=True)
+    # def like_comment(self, request, pk):
+    #     like, created = Like.objects.get_or_create(user=request.user, comment=self.get_object())
+    #     if not created:
+    #         like.active = not like.active
+    #         like.save()
+    #
+    #     return Response(status=status.HTTP_200_OK)
 
 
 # =============================== (^3^) =============================== #
@@ -780,44 +799,49 @@ def hmacsha512(key, data):
     return hmac.new(byteKey, byteData, hashlib.sha512).hexdigest()
 
 
+from django.utils import timezone
+
+
 @api_view(['GET', 'POST'])
 def payment(request):
     if request.method == 'POST':
-        # Process input data and build url payment
-        form = PaymentForm(request.POST)
-        if form.is_valid():
-            order_type = form.cleaned_data['order_type']
-            order_id = form.cleaned_data['order_id']
-            amount = form.cleaned_data['amount']
-            order_desc = form.cleaned_data['order_desc']
-            bank_code = form.cleaned_data['bank_code']
-            language = form.cleaned_data['language']
-            ipaddr = get_client_ip(request)
-            # Build URL Payment
-            vnp = vnpay()
-            vnp.requestData['vnp_Version'] = '2.1.0'
-            vnp.requestData['vnp_Command'] = 'pay'
-            vnp.requestData['vnp_TmnCode'] = settings.VNPAY_TMN_CODE
-            vnp.requestData['vnp_Amount'] = amount * 100
-            vnp.requestData['vnp_CurrCode'] = 'VND'
-            vnp.requestData['vnp_TxnRef'] = order_id
-            vnp.requestData['vnp_OrderInfo'] = order_desc
-            vnp.requestData['vnp_OrderType'] = order_type
-            # Check language, default: vn
-            if language and language != '':
-                vnp.requestData['vnp_Locale'] = language
-            else:
-                vnp.requestData['vnp_Locale'] = 'vn'
-                # Check bank_code, if bank_code is empty, customer will be selected bank on VNPAY
-            if bank_code and bank_code != "":
-                vnp.requestData['vnp_BankCode'] = bank_code
+        order_ecommerce_id = request.data.get('order_ecommerce_id')
+        order_type = "billpayment"
+        order_id = int(timezone.now().strftime('%Y%m%d%H%M%S'))
+        amount = request.data.get('amount')
+        order_desc = 'Thanh toan hoa don ecommerce co ma la ' + str(order_ecommerce_id) + ' qua VN PAY'
+        bank_code = ""
+        language = "vn"
+        ipaddr = get_client_ip(request)
+        # Build URL Payment
+        vnp = vnpay()
+        vnp.requestData['vnp_Version'] = '2.1.0'
+        vnp.requestData['vnp_Command'] = 'pay'
+        vnp.requestData['vnp_TmnCode'] = settings.VNPAY_TMN_CODE
+        vnp.requestData['vnp_Amount'] = amount * 100
+        vnp.requestData['vnp_CurrCode'] = 'VND'
+        vnp.requestData['vnp_TxnRef'] = order_id
+        vnp.requestData['vnp_OrderInfo'] = order_desc
+        vnp.requestData['vnp_OrderType'] = order_type
 
-            vnp.requestData['vnp_CreateDate'] = datetime.now().strftime('%Y%m%d%H%M%S')  # 20150410063022
-            vnp.requestData['vnp_IpAddr'] = ipaddr
-            vnp.requestData['vnp_ReturnUrl'] = settings.VNPAY_RETURN_URL
-            vnpay_payment_url = vnp.get_payment_url(settings.VNPAY_PAYMENT_URL, settings.VNPAY_HASH_SECRET_KEY)
-            print(vnpay_payment_url)
-            return redirect(vnpay_payment_url)
+        # Check language, default: vn
+        if language and language != '':
+            vnp.requestData['vnp_Locale'] = language
+        else:
+            vnp.requestData['vnp_Locale'] = 'vn'
+            # Check bank_code, if bank_code is empty, customer will be selected bank on VNPAY
+        if bank_code and bank_code != "":
+            vnp.requestData['vnp_BankCode'] = bank_code
+
+        vnp.requestData['vnp_CreateDate'] = datetime.now().strftime('%Y%m%d%H%M%S')
+        vnp.requestData['vnp_IpAddr'] = ipaddr
+        vnp.requestData['vnp_ReturnUrl'] = settings.VNPAY_RETURN_URL
+        vnpay_payment_url = vnp.get_payment_url(settings.VNPAY_PAYMENT_URL, settings.VNPAY_HASH_SECRET_KEY)
+        print(vnpay_payment_url)
+        vnpay_data = {
+            'url': vnpay_payment_url,
+        }
+        return Response(serializers.PaymentVnPaySerializer(vnpay_data).data, status=status.HTTP_200_OK)
     else:
         context = {
             "title": "Thanh toán"
@@ -839,6 +863,7 @@ def payment_ipn(request):
         vnp_PayDate = inputData['vnp_PayDate']
         vnp_BankCode = inputData['vnp_BankCode']
         vnp_CardType = inputData['vnp_CardType']
+
         if vnp.validate_response(settings.VNPAY_HASH_SECRET_KEY):
             # Check & Update Order Status in your Database
             # Your code here
@@ -882,28 +907,60 @@ def payment_return(request):
         vnp_PayDate = inputData['vnp_PayDate']
         vnp_BankCode = inputData['vnp_BankCode']
         vnp_CardType = inputData['vnp_CardType']
+
+        order_ecommerce_id = int(extract_first_number_from_string(order_desc))
+        order_ecommerce = None
+        if order_ecommerce_id > 0:
+            order_ecommerce = Order.objects.filter(id=order_ecommerce_id).first()
+            if order_ecommerce is None:
+                return JsonResponse({"title": "Kết quả thanh toán",
+                                     "result": "Loi vi khong ton tai don hang nay trong ecommerce app !",
+                                     "order_id": order_id,
+                                     "amount": amount,
+                                     "order_desc": order_desc,
+                                     "vnp_TransactionNo": vnp_TransactionNo,
+                                     "vnp_ResponseCode": vnp_ResponseCode}, status=status.HTTP_400_BAD_REQUEST)
+            if order_ecommerce and not order_ecommerce.status.id == 1:
+                status_order = StatusOrder.objects.get(id=1)
+                order_ecommerce.status = status_order
+                order_ecommerce.save()
+            return JsonResponse({"title": "Kết quả thanh toán",
+                                 "result": "Lỗi vì đơn hàng này đã được thanh toán !", "order_id": order_id,
+                                 "amount": amount,
+                                 "order_desc": order_desc,
+                                 "vnp_TransactionNo": vnp_TransactionNo,
+                                 "vnp_ResponseCode": vnp_ResponseCode}, status=status.HTTP_208_ALREADY_REPORTED)
+
+        payment_vnpay_detail = PaymentVNPAYDetail.objects.create(order_id=order_id, amount=amount,
+                                                                 order_desc=order_desc,
+                                                                 vnp_TransactionNo=vnp_TransactionNo,
+                                                                 vnp_ResponseCode=vnp_ResponseCode,
+                                                                 orderEcommerce=order_ecommerce)
+        payment_vnpay_detail.save()
+        order_id = int(inputData['vnp_TxnRef'])
+
         if vnp.validate_response(settings.VNPAY_HASH_SECRET_KEY):
             if vnp_ResponseCode == "00":
-                return render(request, "payment/payment_return.html", {"title": "Kết quả thanh toán",
-                                                                       "result": "Thành công", "order_id": order_id,
-                                                                       "amount": amount,
-                                                                       "order_desc": order_desc,
-                                                                       "vnp_TransactionNo": vnp_TransactionNo,
-                                                                       "vnp_ResponseCode": vnp_ResponseCode})
+                return JsonResponse({"title": "Kết quả thanh toán",
+                                     "result": "Thành công", "order_id": order_id,
+                                     "amount": amount,
+                                     "order_desc": order_desc,
+                                     "vnp_TransactionNo": vnp_TransactionNo,
+                                     "vnp_ResponseCode": vnp_ResponseCode}, status=status.HTTP_200_OK)
             else:
-                return render(request, "payment/payment_return.html", {"title": "Kết quả thanh toán",
-                                                                       "result": "Lỗi", "order_id": order_id,
-                                                                       "amount": amount,
-                                                                       "order_desc": order_desc,
-                                                                       "vnp_TransactionNo": vnp_TransactionNo,
-                                                                       "vnp_ResponseCode": vnp_ResponseCode})
+                return JsonResponse({"title": "Kết quả thanh toán",
+                                     "result": "Lỗi", "order_id": order_id,
+                                     "amount": amount,
+                                     "order_desc": order_desc,
+                                     "vnp_TransactionNo": vnp_TransactionNo,
+                                     "vnp_ResponseCode": vnp_ResponseCode}, status=status.HTTP_200_OK)
         else:
-            return render(request, "payment/payment_return.html",
-                          {"title": "Kết quả thanh toán", "result": "Lỗi", "order_id": order_id, "amount": amount,
-                           "order_desc": order_desc, "vnp_TransactionNo": vnp_TransactionNo,
-                           "vnp_ResponseCode": vnp_ResponseCode, "msg": "Sai checksum"})
+            return JsonResponse(
+                {"title": "Kết quả thanh toán", "result": "Lỗi", "order_id": order_id, "amount": amount,
+                 "order_desc": order_desc, "vnp_TransactionNo": vnp_TransactionNo,
+                 "vnp_ResponseCode": vnp_ResponseCode, "msg": "Sai checksum"}, status=status.HTTP_400_BAD_REQUEST)
     else:
-        return render(request, "payment/payment_return.html", {"title": "Kết quả thanh toán", "result": ""})
+        return JsonResponse({"title": "Kết quả thanh toán", "result": ""})
 
 
 def get_client_ip(request):
@@ -923,7 +980,7 @@ while len(n_str) < 12:
 
 def query(request):
     if request.method == 'GET':
-        return render(request, "payment/query.html", {"title": "Kiểm tra kết quả giao dịch"})
+        return JsonResponse({"title": "Kiểm tra kết quả giao dịch"})
 
     url = settings.VNPAY_API_URL
     secret_key = settings.VNPAY_HASH_SECRET_KEY
@@ -968,8 +1025,8 @@ def query(request):
     else:
         response_json = {"error": f"Request failed with status code: {response.status_code}"}
 
-    return render(request, "payment/query.html",
-                  {"title": "Kiểm tra kết quả giao dịch", "response_json": response_json})
+    return JsonResponse(
+        {"title": "Kiểm tra kết quả giao dịch", "response_json": response_json})
 
 
 def refund(request):
@@ -1026,8 +1083,8 @@ def refund(request):
     else:
         response_json = {"error": f"Request failed with status code: {response.status_code}"}
 
-    return render(request, "payment/refund.html",
-                  {"title": "Kết quả hoàn tiền giao dịch", "response_json": response_json})
+    return JsonResponse(
+        {"title": "Kết quả hoàn tiền giao dịch", "response_json": response_json})
 
 # =============================== (^3^) =============================== #
 # GET statistics/revenue/?category_id=&?product_id=?q= (q = mm/qq/yyyy) <Bear Token is owner>

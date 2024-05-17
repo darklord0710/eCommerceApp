@@ -337,3 +337,8 @@ class OrderFinalSerializer(serializers.Serializer):
     order = OrderSerializer()
     order_detail = OrderDetailSerializer()
     order_product_color = serializers.CharField(required=False)
+
+
+###################### Payment VNPAY ################
+class PaymentVnPaySerializer(serializers.Serializer):
+    url = serializers.CharField()

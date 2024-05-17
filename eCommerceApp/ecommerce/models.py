@@ -212,19 +212,18 @@ class ConfirmationShop(models.Model):
     note = RichTextField(default=None, null=True)
 
 
-class Like(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    comment = models.ForeignKey(Comment, on_delete=models.CASCADE)
-    active = models.BooleanField(default=True)
+class PaymentVNPAYDetail(models.Model):
+    order_id = models.CharField(max_length=20)
+    amount = models.FloatField(null=False, default=0)
+    order_desc = models.CharField(max_length=100)
+    vnp_TransactionNo = models.CharField(null=True, blank=True, max_length=255)
+    vnp_ResponseCode = models.CharField(null=True, blank=True, max_length=255)
+    orderEcommerce = models.ForeignKey(Order, on_delete=models.CASCADE)
 
-    class Meta:
-        unique_together = ('user', 'comment')
-
-
-class PaymentForm(forms.Form):
-    order_id = forms.CharField(max_length=250)
-    order_type = forms.CharField(max_length=20)
-    amount = forms.IntegerField()
-    order_desc = forms.CharField(max_length=100)
-    bank_code = forms.CharField(max_length=20, required=False)
-    language = forms.CharField(max_length=2)
+# class Like(models.Model):
+#     user = models.ForeignKey(User, on_delete=models.CASCADE)
+#     comment = models.ForeignKey(Comment, on_delete=models.CASCADE)
+#     active = models.BooleanField(default=True)
+#
+#     class Meta:
+#         unique_together = ('user', 'comment')
