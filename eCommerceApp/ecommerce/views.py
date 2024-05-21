@@ -428,6 +428,11 @@ class UserViewSet(viewsets.ViewSet, generics.CreateAPIView):
             user = request.user
             # USER ADDRESS
             user_address = self.get_object().useraddresses_set.filter(user_id=pk, default=True).first()
+            if user_address is None:
+                user_address = self.get_object().useraddresses_set.create(name=user.name, phone_number=user.phone,
+                                                                          address="",
+                                                                          user=user,
+                                                                          default=True)
             # ORDER STATUS
             statusOrder = StatusOrder.objects.get(id=2)
             # PRODUCT

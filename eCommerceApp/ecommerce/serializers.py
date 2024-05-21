@@ -294,7 +294,8 @@ class ReplyCommentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ReplyComment
-        fields = ['id', 'created_date', 'content', 'parent_comment_id', 'product_id', 'user', 'isParentCommentReply']
+        fields = ['id', 'created_date', 'content', 'parent_comment_id', 'product_id', 'user', 'isParentCommentReply',
+                  'order']
 
     def get_isParentCommentReply(self, obj):
         return ReplyComment.objects.filter(parent_comment_id=obj.id).exists()

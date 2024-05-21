@@ -33,7 +33,7 @@ urlpatterns = [
     path('products/<int:product_id>/replyParentComment/<int:replyComment_id>/replyChildComments/',
          views.ReplyChildCommentView.as_view(),
          name='reply_parent_comment'),
-    path('users/<int:user_id>/addresses/<int:user_address_id>/default', views.UserDefaultAddressView.as_view(),
+    path('users/<int:user_id>/addresses/<int:user_address_id>/default/', views.UserDefaultAddressView.as_view(),
          name='default_address'),
 
     # vn pay api
