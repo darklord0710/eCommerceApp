@@ -152,10 +152,11 @@ class ProductSellSerializer(serializers.ModelSerializer):
 class ProductSerializer(BaseSerializer):
     sold_quantity = serializers.IntegerField(source='productsell.sold_quantity', read_only=True)
     rating = serializers.FloatField(source='productsell.rating', read_only=True)
+    shop = ShopSerializer()
 
     class Meta:
         model = Product
-        fields = ['id', 'img', 'name', 'price', 'sold_quantity', 'rating', ]
+        fields = ['id', 'img', 'name', 'price', 'sold_quantity', 'rating', 'shop']
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
@@ -338,6 +339,24 @@ class OrderFinalSerializer(serializers.Serializer):
     order = OrderSerializer()
     order_detail = OrderDetailSerializer()
     order_product_color = serializers.CharField(required=False)
+
+
+class OrderSummaryItemSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+    product = ProductSerializer()
+    status = StatusOrderSerializer()
+    order_detail = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Order
+        fields = ['id', 'final_amount', 'user', 'product', 'order_detail', 'status']
+
+    def get_order_detail(self, obj):
+        try:
+            order_detail = OrderDetail.objects.get(order=obj)
+            return OrderDetailSerializer(order_detail).data
+        except OrderDetail.DoesNotExist:
+            return None
 
 
 ###################### Payment VNPAY ################

@@ -455,6 +455,9 @@ class UserViewSet(viewsets.ViewSet, generics.CreateAPIView):
 
             return Response(serializers.OrderFinalSerializer(order_data).data, status=status.HTTP_201_CREATED)
 
+        orders = self.get_object().order_set.select_related('user')
+        return Response(serializers.OrderSummaryItemSerializer(orders, many=True).data, status=status.HTTP_200_OK)
+
 
 # PATCH users/<int:user_id>/addresses/<int:user_address_id>/default
 class UserDefaultAddressView(APIView):
@@ -530,11 +533,10 @@ class ProductViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
         opd = self.request.query_params.get("opd")  # order price decrease
         oni = self.request.query_params.get("oni")  # order name increase
         ond = self.request.query_params.get("ond")  # order name decrease
-        cate_id = self.request.query_params.get('cate_id')  # filter by category id
+        cate_name = self.request.query_params.get('cate_name')  # filter by category name
         if self.action == 'list':
             if n:
                 queries = queries.filter(Q(name__icontains=n) | Q(shop__name__icontains=n))
-                queries = queries.filter()
             if pmn:
                 queries = queries.filter(price__gte=pmn)
             if pmx:
@@ -547,8 +549,8 @@ class ProductViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
                 queries = queries.order_by('name')
             if ond is not None:
                 queries = queries.order_by('-name')
-            if cate_id:
-                queries = queries.filter(category_id=cate_id)
+            if cate_name:
+                queries = queries.filter(category__name=cate_name)
 
         return queries
 
@@ -924,18 +926,13 @@ def payment_return(request):
                                      "order_id": order_id,
                                      "amount": amount,
                                      "order_desc": order_desc,
-                                     "vnp_TransactionNo": vnp_TransactionNo,
-                                     "vnp_ResponseCode": vnp_ResponseCode}, status=status.HTTP_400_BAD_REQUEST)
-            if order_ecommerce and not order_ecommerce.status.id == 1:
-                status_order = StatusOrder.objects.get(id=1)
-                order_ecommerce.status = status_order
-                order_ecommerce.save()
-            return JsonResponse({"title": "Kết quả thanh toán",
-                                 "result": "Lỗi vì đơn hàng này đã được thanh toán !", "order_id": order_id,
-                                 "amount": amount,
-                                 "order_desc": order_desc,
-                                 "vnp_TransactionNo": vnp_TransactionNo,
-                                 "vnp_ResponseCode": vnp_ResponseCode}, status=status.HTTP_208_ALREADY_REPORTED)
+                                     "vnp_TransactionNo": vnp_TransactionNo}, status=status.HTTP_400_BAD_REQUEST)
+            if order_ecommerce and order_ecommerce.status.id == 1:
+                return JsonResponse({"title": "Kết quả thanh toán",
+                                     "result": "Loi vi don hang nay da duoc thanh toan !", "order_id": order_id,
+                                     "amount": amount,
+                                     "order_desc": order_desc,
+                                     "vnp_TransactionNo": vnp_TransactionNo}, status=status.HTTP_208_ALREADY_REPORTED)
 
         payment_vnpay_detail = PaymentVNPAYDetail.objects.create(order_id=order_id, amount=amount,
                                                                  order_desc=order_desc,
@@ -947,8 +944,11 @@ def payment_return(request):
 
         if vnp.validate_response(settings.VNPAY_HASH_SECRET_KEY):
             if vnp_ResponseCode == "00":
+                status_order = StatusOrder.objects.get(id=1)
+                order_ecommerce.status = status_order
+                order_ecommerce.save()
                 return JsonResponse({"title": "Kết quả thanh toán",
-                                     "result": "Thành công", "order_id": order_id,
+                                     "result": "Thanh cong", "order_id": order_id,
                                      "amount": amount,
                                      "order_desc": order_desc,
                                      "vnp_TransactionNo": vnp_TransactionNo,
