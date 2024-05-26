@@ -184,6 +184,7 @@ class Comment(Interaction):
 class Rating_Comment(Interaction):
     rating = models.ForeignKey(Rating, on_delete=models.CASCADE)
     comment = models.ForeignKey(Comment, on_delete=models.CASCADE)
+    order = models.ForeignKey(Order, on_delete=models.CASCADE)
     active = models.BooleanField(default=True)
 
 

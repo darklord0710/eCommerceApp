@@ -335,6 +335,14 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         fields = ['id', 'order_date', 'quantity', 'userAddresses']
 
 
+class OrderProductColorSerializer(serializers.ModelSerializer):
+    product_colors = ProductImagesColorsSerializer()
+
+    class Meta:
+        model = OrderProductColor
+        fields = ['id', 'product_colors']
+
+
 class OrderFinalSerializer(serializers.Serializer):
     order = OrderSerializer()
     order_detail = OrderDetailSerializer()
@@ -346,10 +354,12 @@ class OrderSummaryItemSerializer(serializers.ModelSerializer):
     product = ProductSerializer()
     status = StatusOrderSerializer()
     order_detail = serializers.SerializerMethodField()
+    order_color = serializers.SerializerMethodField()
+    is_rating_comment = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
-        fields = ['id', 'final_amount', 'user', 'product', 'order_detail', 'status']
+        fields = ['id', 'is_rating_comment', 'final_amount', 'user', 'product', 'order_detail', 'order_color', 'status']
 
     def get_order_detail(self, obj):
         try:
@@ -357,6 +367,20 @@ class OrderSummaryItemSerializer(serializers.ModelSerializer):
             return OrderDetailSerializer(order_detail).data
         except OrderDetail.DoesNotExist:
             return None
+
+    def get_order_color(self, obj):
+        try:
+            order_color = OrderProductColor.objects.get(order=obj)
+            return OrderProductColorSerializer(order_color).data
+        except OrderDetail.DoesNotExist:
+            return None
+
+    def get_is_rating_comment(self, obj):
+        try:
+            rating_comment = Rating_Comment.objects.filter(order=obj).exists()
+            return rating_comment
+        except Rating_Comment.DoesNotExist:
+            return False
 
 
 ###################### Payment VNPAY ################

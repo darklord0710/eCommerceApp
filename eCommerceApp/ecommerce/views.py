@@ -518,7 +518,7 @@ class ProductViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
 
     def get_permissions(self):
         if self.action in ['create_update_rating', 'update_delete_comment', 'get_post_replyComment_product',
-                           'post_confirm_order']:
+                           'post_confirm_order', 'get_post_all_rating_comment_product']:
             return [permissions.IsAuthenticated()]
 
         return [permissions.AllowAny(), ]
@@ -639,9 +639,47 @@ class ProductViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
 
         return Response(serializers.CommentSerializer(comment).data, status=status.HTTP_200_OK)
 
-    # GET products/{product_id}/ratings_comments
-    @action(methods=['get'], url_path="rating_comment", detail=True)
-    def get_all_rating_comment_product(self, request, pk):
+    # GET products/{product_id}/ratings_comments/
+    # POST products/{product_id}/ratings_comments/
+    @action(methods=['get', 'post'], url_path="rating_comment", detail=True)
+    def get_post_all_rating_comment_product(self, request, pk):
+        if request.method == 'POST':
+            ratedShop = request.data.get('ratedShop')
+            ratedProduct = request.data.get('ratedProduct')
+            contentShop = request.data.get('contentShop')
+            contentProduct = request.data.get('contentProduct')
+            order_id = request.data.get('order_id')
+            product = self.queryset.filter(id=pk).first()
+            order = Order.objects.get(id=order_id)
+            user = request.user
+
+            productSell = ProductSell.objects.filter(product_id=product.id).first()
+            shop = Shop.objects.get(id=product.shop_id)
+
+            r = self.get_object().rating_set.create(ratedShop=ratedShop, ratedProduct=ratedProduct, user=user,
+                                                    product=product)
+            rated_products_len = Rating.objects.filter(product_id=r.product_id)
+            if rated_products_len == 0:
+                productSell.rating = ratedProduct
+                shop.rated = ratedShop
+            else:
+                totalPointPro = rated_products_len.aggregate(total_sum=Sum('ratedProduct'))['total_sum']
+                productSell.rating = totalPointPro / len(rated_products_len)
+                productSell.save()
+
+                totalPointShop = rated_products_len.aggregate(total_sum=Sum('ratedShop'))['total_sum']
+                shop.rated = totalPointShop / len(rated_products_len)
+                shop.save()
+
+            comment = Comment.objects.create(user=user, contentShop=contentShop, contentProduct=contentProduct,
+                                             product=product)
+            comment.save()
+            rating_comment = Rating_Comment.objects.create(rating=r, comment=comment, product=product, user=user,
+                                                           order=order)
+            rating_comment.save()
+            return Response(serializers.Rating_Comment_Serializer(rating_comment).data,
+                            status=status.HTTP_200_OK)
+
         rating_comment = Rating_Comment.objects.prefetch_related('comment').filter(product_id=pk).filter(
             active=True).order_by("-id")
         return Response(serializers.Rating_Comment_Serializer(rating_comment, many=True).data,
