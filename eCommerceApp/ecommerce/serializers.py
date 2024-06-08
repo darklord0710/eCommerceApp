@@ -179,10 +179,11 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     videos = ProductVideoSerializer(many=True)
     sell = ProductSellSerializer()
     shop = ShopSerializer()
+    category = CategorySerializer()
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'price', 'info', 'images', 'colors', 'videos', 'sell', 'shop']
+        fields = ['id', 'name', 'price', 'info', 'images', 'colors', 'videos', 'sell', 'shop', 'category']
 
 
 class ShopCategoriesSerializer(serializers.Serializer):

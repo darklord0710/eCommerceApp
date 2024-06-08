@@ -678,7 +678,7 @@ class ProductViewSet(viewsets.ViewSet, generics.ListCreateAPIView):
                                                            order=order)
             rating_comment.save()
             return Response(serializers.Rating_Comment_Serializer(rating_comment).data,
-                            status=status.HTTP_200_OK)
+                            status=status.HTTP_201_CREATED)
 
         rating_comment = Rating_Comment.objects.prefetch_related('comment').filter(product_id=pk).filter(
             active=True).order_by("-id")
@@ -786,6 +786,7 @@ class ProductDetailView(APIView):
             "sell": product.productsell_set.filter(product_id=product.id).values("id", "sold_quantity", "percent_sale",
                                                                                  "rating", "delivery_price").first(),
             "shop": shop,
+            "category": product.category
         }
         return Response(serializers.ProductDetailSerializer(product_data).data, status=status.HTTP_200_OK)
 
@@ -883,10 +884,10 @@ def payment(request):
         vnp.requestData['vnp_IpAddr'] = ipaddr
         vnp.requestData['vnp_ReturnUrl'] = settings.VNPAY_RETURN_URL
         vnpay_payment_url = vnp.get_payment_url(settings.VNPAY_PAYMENT_URL, settings.VNPAY_HASH_SECRET_KEY)
-        print(vnpay_payment_url)
         vnpay_data = {
             'url': vnpay_payment_url,
         }
+
         return Response(serializers.PaymentVnPaySerializer(vnpay_data).data, status=status.HTTP_200_OK)
     else:
         context = {
