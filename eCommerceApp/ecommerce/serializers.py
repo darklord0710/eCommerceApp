@@ -205,6 +205,16 @@ class UserLoginSerializer(serializers.Serializer):
         return data
 
 
+class UserLoginWithGoogleSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate(self, data):
+        email = data.get('email')
+        if not email:
+            raise serializers.ValidationError("Email required.")
+        return data
+
+
 class UserLoginWithSMSSerializer(serializers.Serializer):
     phone = serializers.CharField()
 
@@ -228,6 +238,9 @@ class VerifyOTPSerializer(serializers.Serializer):
 class UserSignupSerializer(serializers.Serializer):
     username = serializers.CharField()
     avatar = serializers.ImageField()
+    email = serializers.EmailField(required=False)
+    first_name = serializers.CharField(required=False)
+    last_name = serializers.CharField(required=False)
 
     def validate(self, data):
         username = data.get('username')

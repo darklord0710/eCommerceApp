@@ -21,6 +21,7 @@ urlpatterns = [
     path('accounts/login/', views.user_login, name='login'),
     path('accounts/login-with-sms/', views.login_with_sms, name='login_with_sms'),
     # Still not handle enter wrong OTP, expired OTP, Resend
+    path('accounts/login-with-google/', views.login_with_google, name='login_with_google'),
     path('accounts/signup/', views.user_signup, name='signup'),
     # path('accounts/profile/', views.profile_view, name='profile'),
     path('accounts/basic-setup-profile/', views.basic_setup_profile, name='basic_setup_profile'),

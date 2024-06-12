@@ -28,6 +28,8 @@ from dotenv import load_dotenv
 load_dotenv()  # take environment variables from .env.
 
 import os
+from google.oauth2 import id_token
+from google.auth.transport import requests as auth_requests
 
 
 def extract_first_number_from_string(s):
@@ -90,9 +92,11 @@ def user_login(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['POST'])
 def log_out(request):
-    logout(request)
-    return render(request, 'login.html')
+    if request.method == 'POST':
+        logout(request)
+    return Response({'success': 'Logout successfully'}, status=status.HTTP_200_OK)
 
 
 @api_view(['GET', 'POST'])
@@ -240,27 +244,40 @@ def basic_setup_profile(request):  # Đều dùng cho signup cũ và mới
 
     if request.method == 'POST':
         serializer = serializers.UserSignupSerializer(data=request.data)
+        # Create signup (with email)
         if serializer.is_valid():
             username = serializer.validated_data.get('username')
             avatar = serializer.validated_data.get('avatar')
+            email = serializer.validated_data.get('email')
+            first_name = serializer.validated_data.get('first_name')
+            last_name = serializer.validated_data.get('last_name')
 
             if User.objects.filter(username=username).exists():  # Check if the username is already taken
                 return Response({'error': 'Username already taken.'}, status=status.HTTP_400_BAD_REQUEST)
             else:
+                print('re_data ', serializer)
                 if avatar:
                     response = cloudinary.uploader.upload(avatar)
-                    avatar_url = response.get('url')
+                    avatar_url = response.get('secure_url')
                     # is_active=0 vs user has used phone be4 & create new user
                     User.objects.filter(phone=request.session.get('phone'), is_active=1).update(is_active=0)
-                    user = User.objects.create_user(username=username, password=cache.get('password'),
-                                                    phone=request.session.get('phone'), avatar=avatar_url)
-                    user.is_active = 1
-                    user.save()
+                    if not email:
+                        user = User.objects.create_user(username=username, password=cache.get('password'),
+                                                        phone=request.session.get('phone'), avatar=avatar_url)
+                        user.is_active = 1
+                        user.save()
+                    elif email:
+                        print('email ',  email)
+                        user = User.objects.create_user(username=username, first_name=first_name, last_name=last_name,
+                                                        email=email, password=cache.get('password'),
+                                                        phone=request.session.get('phone'), avatar=avatar_url)
+                        user.is_active = 1
+                        user.save()
 
                     token = get_access_token(username, cache.get('password'))
-                    cache.delete('password')  # Xóa cache_password_signup
+                    cache.delete('password')  # Delete cache_password_signup
                     if 'phone' in request.session:
-                        del request.session['phone']  # Xóa session_phone_signup
+                        del request.session['phone']  # Delete session_phone_signup
                     # Redirect to another page after profile setup
                     return Response({'success': 'User created successfully', 'access_token': token},
                                     status=status.HTTP_200_OK)
@@ -270,32 +287,46 @@ def basic_setup_profile(request):  # Đều dùng cho signup cũ và mới
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# For login with Google
-# def profile_view(request):
-#     picture_url = None
-#     if request.user.is_authenticated:
-#         user = request.user
-#         if not user.avatar:
-#             try:
-#                 social_account = SocialAccount.objects.get(user=user)
-#                 extra_data = social_account.extra_data
-#                 picture_url = extra_data.get('picture')
-#                 if picture_url:
-#                     # Tải hình ảnh từ URL và lưu vào CloudinaryField
-#                     upload_result = cloudinary.uploader.upload(picture_url)
-#                     user.avatar = upload_result['url']
-#                     user.save()
-#                     print(f"URL mới được lưu trong Cloudinary: {user.avatar}")
-#             except SocialAccount.DoesNotExist:
-#                 print("Không có thông tin SocialAccount tương ứng.")
-#         else:
-#             print(f"Hình ảnh hiện tại từ Cloudinary: {user.avatar.url}")
-#             picture_url = user.avatar.url
-#             return render(request, 'noti.html', {'picture_url': picture_url})
-#     else:
-#         print("User not authenticated")
-#     return render(request, 'noti.html', {'picture_url': picture_url})
+@api_view(['GET', 'POST'])
+def login_with_google(request):
+    if request.method == 'POST':
+        try:
+            # decodeIdToken
+            decodeIdToken = id_token.verify_oauth2_token(request.data['idToken'], auth_requests.Request(),
+                                                         os.getenv('WEB_CLIENT_ID'))
+            # Check expiredToken
+            if int(timezone.now().timestamp()) > decodeIdToken['exp']:
+                return Response({'error': 'Token has expired'}, status=status.HTTP_400_BAD_REQUEST)
+            # Compare tokenInfo & userInfo
+            id_token_user_info = {
+                "email": decodeIdToken['email'],
+                "familyName": decodeIdToken.get('family_name', ''),
+                "givenName": decodeIdToken.get('given_name', ''),
+                "id": decodeIdToken['sub'],
+                "name": decodeIdToken['name'],
+                "photo": decodeIdToken.get('picture', '')
+            }
+            request_user_info = request.data['user']
+            if id_token_user_info != request_user_info:
+                return Response({'error': 'User information mismatch'}, status=status.HTTP_400_BAD_REQUEST)
 
+            # Serialize and validate the email
+            serializer = serializers.UserLoginWithGoogleSerializer(data={'email': request_user_info['email']})
+            if serializer.is_valid():
+                email = serializer.validated_data.get('email')
+
+                users_with_email = User.objects.filter(email=email, is_active=1)
+                if users_with_email.exists():
+                    access_token = get_access_token_login(users_with_email.first())
+                    return Response({'success': 'Login successfully', 'access_token': access_token.token},
+                                    status=status.HTTP_200_OK)
+                else:
+                    # Store data to session
+                    return Response({'success': 'Continue to setup profile to finish'}, status=status.HTTP_200_OK)
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response({'error': 'Login with Google failed'}, status=status.HTTP_400_BAD_REQUEST)
 
 #
 # from .models import User, Place, Purpose, Meeting, GuestMeeting
@@ -844,9 +875,6 @@ def hmacsha512(key, data):
     byteKey = key.encode('utf-8')
     byteData = data.encode('utf-8')
     return hmac.new(byteKey, byteData, hashlib.sha512).hexdigest()
-
-
-from django.utils import timezone
 
 
 @api_view(['GET', 'POST'])
